@@ -1,0 +1,12 @@
+[project]
+name = "po3-objectodyssey"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.135.2",
+    "openai>=2.30.0",
+    "pillow>=12.1.1",
+    "uvicorn>=0.42.0",
+]
