@@ -1,0 +1,14 @@
+# 가상환경
+venv/
+.venv/
+env/
+ENV/
+
+# 파이썬 캐시 및 빌드 파일
+__pycache__/
+*.py[cod]
+*$py.class
+dist/
+build/
+
+.env
