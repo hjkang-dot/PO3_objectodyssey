@@ -27,12 +27,7 @@ dependencies = [
     "scikit-learn>=1.8.0",
     "speechrecognition>=3.15.1",
     "streamlit>=1.55.0",
-<<<<<<< HEAD
     "timm>=1.0.26",
-=======
-    "streamlit-lottie>=0.0.5",
-    "streamlit-mic-recorder>=0.0.8",
->>>>>>> b79288209598e7ec18a1305e31d6c5ecdc23225b
     "torch>=2.10.0",
     "torchaudio>=2.10.0",
     "torchvision>=0.25.0",
