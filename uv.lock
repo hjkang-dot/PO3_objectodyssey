@@ -2951,7 +2951,12 @@ dependencies = [
     { name = "scikit-learn" },
     { name = "speechrecognition" },
     { name = "streamlit" },
+<<<<<<< HEAD
     { name = "timm" },
+=======
+    { name = "streamlit-lottie" },
+    { name = "streamlit-mic-recorder" },
+>>>>>>> b79288209598e7ec18a1305e31d6c5ecdc23225b
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
@@ -2986,7 +2991,12 @@ requires-dist = [
     { name = "scikit-learn", specifier = ">=1.8.0" },
     { name = "speechrecognition", specifier = ">=3.15.1" },
     { name = "streamlit", specifier = ">=1.55.0" },
+<<<<<<< HEAD
     { name = "timm", specifier = ">=1.0.26" },
+=======
+    { name = "streamlit-lottie", specifier = ">=0.0.5" },
+    { name = "streamlit-mic-recorder", specifier = ">=0.0.8" },
+>>>>>>> b79288209598e7ec18a1305e31d6c5ecdc23225b
     { name = "torch", specifier = ">=2.10.0", index = "https://download.pytorch.org/whl/cu126" },
     { name = "torchaudio", specifier = ">=2.10.0" },
     { name = "torchvision", specifier = ">=0.25.0", index = "https://download.pytorch.org/whl/cu126" },
@@ -4227,6 +4237,31 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/92/8e/f2b8b4fa8ba65aae251170c54f8ce198fb588fc348301c2b624f8c63efac/streamlit-1.55.0.tar.gz", hash = "sha256:015e512bbd02d000f4047e51118dc086b70e7d9c46b4a11a33c2509731379626", size = 8612008, upload-time = "2026-03-03T22:26:02.149Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/dc/e6/412c1e1f200ca8c32ecf10201839183e261ad61ced3ede34a66f6d4be3cf/streamlit-1.55.0-py3-none-any.whl", hash = "sha256:1e4a16449c6131696180f4ddb40ea8c51834e89c2a43e1b0362bc9b1cfd9b415", size = 9075714, upload-time = "2026-03-03T22:25:59.126Z" },
+]
+
+[[package]]
+name = "streamlit-lottie"
+version = "0.0.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/4b/d4/e13ac9bde5b81b308d061092a420008af78c8b08547739423195596452d8/streamlit-lottie-0.0.5.tar.gz", hash = "sha256:c61589fb92bdf1dd5bd0a2ea75315d92e3383f46059b3704515d096a1e953d79", size = 792567, upload-time = "2023-06-05T13:54:58.718Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/52/b5/8ad7fa3101ec5baed712107a4cf304f174261f2ed2bebe063ad1fbedfe88/streamlit_lottie-0.0.5-py3-none-any.whl", hash = "sha256:98656d6f1cc99c5d96fb8329bafbcdbb65709ad0a05176dffdf4755f6fc04cff", size = 802386, upload-time = "2023-06-05T13:54:56.542Z" },
+]
+
+[[package]]
+name = "streamlit-mic-recorder"
+version = "0.0.8"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "speechrecognition" },
+    { name = "streamlit" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/97/1b/8dc0c547691abb4f98ce42da7767f49ee6e3257a576c7a94e7941003d5dc/streamlit_mic_recorder-0.0.8.tar.gz", hash = "sha256:5a29a98f3bd1582f9d5d90911ef498b32244863d646759c2f5ceec515befb6cf", size = 473935, upload-time = "2024-03-05T19:14:04.457Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/29/45/2883ea5ac05aab014399f996255d7a84fc764c39b892fe68d0835135e641/streamlit_mic_recorder-0.0.8-py3-none-any.whl", hash = "sha256:acbd5ed868dba083d567341c85f1740ae42bd03259c2780dce7f69d5bc109ac8", size = 2246945, upload-time = "2024-03-05T19:14:01.239Z" },
 ]
 
 [[package]]

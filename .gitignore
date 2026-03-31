@@ -13,5 +13,9 @@ build/
 
 .env
 
+<<<<<<< HEAD
 # 개인 테스트 폴더
 kimyonghee/
+=======
+강현준/recordings/
+>>>>>>> b79288209598e7ec18a1305e31d6c5ecdc23225b
