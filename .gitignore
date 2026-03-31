@@ -16,3 +16,4 @@ build/
 # 개인 테스트 폴더
 kimyonghee/
 강현준/recordings/
+audio_module/audios/*

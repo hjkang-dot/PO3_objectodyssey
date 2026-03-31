@@ -1,6 +1,5 @@
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
-from streamlit_lottie import st_lottie
 import datetime
 import os
 import time
