@@ -12,3 +12,6 @@ dist/
 build/
 
 .env
+
+# 개인 테스트 폴더
+kimyonghee/
