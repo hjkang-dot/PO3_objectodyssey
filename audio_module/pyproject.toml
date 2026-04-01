@@ -5,12 +5,14 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.135.2",
     "ipykernel>=7.2.0",
     "jupyter>=1.1.1",
     "qwen-tts>=0.1.1",
     "torch>=2.11.0",
     "torchaudio>=2.11.0",
     "torchvision>=0.26.0",
+    "uvicorn>=0.42.0",
 ]
 
 [tool.uv.sources]

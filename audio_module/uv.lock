@@ -168,22 +168,26 @@ name = "audio-module"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "fastapi" },
     { name = "ipykernel" },
     { name = "jupyter" },
     { name = "qwen-tts" },
     { name = "torch" },
     { name = "torchaudio" },
     { name = "torchvision" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
 requires-dist = [
+    { name = "fastapi", specifier = ">=0.135.2" },
     { name = "ipykernel", specifier = ">=7.2.0" },
     { name = "jupyter", specifier = ">=1.1.1" },
     { name = "qwen-tts", specifier = ">=0.1.1" },
     { name = "torch", specifier = ">=2.11.0", index = "https://download.pytorch.org/whl/cu126" },
     { name = "torchaudio", specifier = ">=2.11.0" },
     { name = "torchvision", specifier = ">=0.26.0", index = "https://download.pytorch.org/whl/cu126" },
+    { name = "uvicorn", specifier = ">=0.42.0" },
 ]
 
 [[package]]
