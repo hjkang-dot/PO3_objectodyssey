@@ -8,14 +8,14 @@ from ultralytics import YOLOWorld, SAM
 from transformers import AutoProcessor, AutoModelForCausalLM
 
 target_keywords = [
-    # 1. 인형 및 장난감
+    # 1. 동물 및 인형류
     "teddy bear", "bear", "plush toy", "plushie", "stuffed animal", "action figure",
     "toy robot", "robot", "toy dinosaur", "dinosaur", "toy dragon", "dragon",
     "toy monster", "monster", "barbie doll", "baby doll", "fairy doll", "doll",
     "wizard figure", "superhero toy", "alien toy", "astronaut toy", "lego set",
     "lego", "building block", "block", "puzzle piece", "puzzle", "toy",
 
-    # 2. 식기 및 음료 용기
+    # 2. 식기 및 조리 도구
     "thermos flask", "flask", "water bottle", "bottle", "drinking tumbler",
     "tumbler", "coffee mug", "mug", "tea cup", "cup", "drinking glass", "glass",
     "glass pitcher", "pitcher", "water jug", "jug", "tea pot", "electric kettle",
@@ -23,7 +23,7 @@ target_keywords = [
     "silver spoon", "spoon", "metal fork", "fork", "table knife", "wooden chopsticks",
     "chopsticks", "lunch box", "box", "picnic basket", "basket",
 
-    # 3. 이동수단 장난감
+    # 3. 탈것 및 이동수단
     "toy car", "car", "toy truck", "truck", "toy train", "train", "toy bus", "bus",
     "fire engine toy", "fire engine", "police car toy", "police car", "ambulance toy",
     "ambulance", "toy airplane", "airplane", "plane", "toy helicopter", "helicopter",
@@ -31,13 +31,13 @@ target_keywords = [
     "toy sailboat", "sailboat", "toy submarine", "submarine", "kick scooter",
     "scooter", "skateboard", "tricycle", "bicycle", "bike",
 
-    # 4. 놀이 및 스포츠 용품
+    # 4. 공 및 스포츠 용품
     "spinning top", "top", "soccer ball", "basketball", "baseball", "tennis ball",
     "golf ball", "beach ball", "ball", "rubber balloon", "balloon", "flying kite",
     "kite", "yo-yo toy", "yoyo", "marble stone", "marble", "frisbee disc", "frisbee",
     "hula hoop", "jumping rope", "bubble wand", "safety helmet", "helmet",
 
-    # 5. 학용품 및 도구
+    # 5. 학용품 및 문구
     "pencil case", "sketch book", "note book", "book", "story book", "picture book",
     "writing pen", "pen", "color pencil", "pencil", "crayon stick", "crayon",
     "felt-tip marker", "marker", "oil pastel", "paint brush", "brush", "color palette",
@@ -45,19 +45,19 @@ target_keywords = [
     "plastic ruler", "ruler", "glue stick", "glue", "scotch tape", "tape",
     "safety scissors", "paper sticker", "sticker",
 
-    # 6. 의류, 가방 및 소품
+    # 6. 가방, 모자 및 액세서리
     "back pack", "backpack", "shoulder bag", "tote bag", "bag", "coin purse", "purse",
     "leather wallet", "wallet", "wrist watch", "sun glasses", "eye glasses", "glasses",
     "winter hat", "baseball cap", "hat", "cap", "sun visor", "rain umbrella", "umbrella",
     "key chain", "house key", "key", "jewelry ring", "ring", "necklace", "bracelet",
     "earring", "hair clip", "hair band", "hair brush",
 
-    # 7. 신발 및 기타 잡화
+    # 7. 신발 및 의류 액세서리
     "sneakers", "sandals", "shoes", "winter boots", "boots", "rain boots", "cotton socks",
     "socks", "winter gloves", "gloves", "woolen scarf", "scarf", "neck tie", "tie",
     "hand mirror", "mirror", "pocket comb", "comb", "hand fan", "fan",
 
-    # 8. 자연물 및 음식
+    # 8. 자연물 및 식품
     "red apple", "apple", "yellow banana", "banana", "orange fruit", "orange",
     "purple grapes", "grape", "strawberry", "cherry fruit", "cherry", "watermelon slice",
     "watermelon", "sweet corn", "corn", "orange carrot", "carrot", "red tomato", "tomato",
@@ -68,24 +68,24 @@ target_keywords = [
 ]
 
 blacklist_keywords = [
-    # 1. 날카롭거나 위험한 물건
+    # 1. 날카로운 도구 및 위험한 물건
     "knife", "razor", "blade", "cutter", "saw", "hammer", "screwdriver", 
     "drill", "needle", "pin", "sword", "gun", "weapon",
     
-    # 2. 화기 및 화학/약품
+    # 2. 불기구 및 화학/약품
     "lighter", "matches", "candle", "firecracker", "stove", "poison", 
     "chemical", "medicine", "pill", "drug",
     
-    # 3. 고가 전자제품 (동화 시나리오 부적합 및 파손 방지)
+    # 3. 현대 전자기기 / 기술물품 (동화 세계관 부정합 방지 및 판독 방해)
     "smartphone", "tablet", "laptop", "monitor", "tv", "camera", 
     "computer", "smartwatch",
     
-    # 4. 유해 매체 및 오염물
+    # 4. 해로운 매체 및 오염물
     "cigarette", "alcohol", "wine", "beer", "vape", "trash", "garbage"
 ]
 
 # ---------------------------------------------------------
-# 1. 모델 전역 로드 (FastAPI Startup/Streamlit Cache용)
+# 1. 모델 영역 로드 (FastAPI Startup/Streamlit Cache용)
 # ---------------------------------------------------------
 def load_all_models():
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -107,7 +107,7 @@ def load_all_models():
 f_model, f_processor, y_model, s_model, device, torch_dtype = load_all_models()
 
 # ---------------------------------------------------------
-# 2. 핵심 처리 함수 (FastAPI/Streamlit 연동용)
+# 2. 핵심 처리 함수 (FastAPI/Streamlit 공용)
 # ---------------------------------------------------------
 def process_object_odyssey(input_image_array, target_keywords, blacklist_keywords):
     """
@@ -116,8 +116,8 @@ def process_object_odyssey(input_image_array, target_keywords, blacklist_keyword
     h, w, _ = input_image_array.shape
     now = datetime.datetime.now().strftime('%Y-%m-%d')
     
-    # [1] Florence-2 캡셔닝
-    # OpenCV(BGR) -> PIL(RGB) 변환 필수
+    # [1] Florence-2 캡션
+    # OpenCV(BGR) -> PIL(RGB) 변환 후 사용
     img_rgb = cv2.cvtColor(input_image_array, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(img_rgb)
 
@@ -133,7 +133,7 @@ def process_object_odyssey(input_image_array, target_keywords, blacklist_keyword
     parsed_answer = f_processor.post_process_generation(generated_text, task="<CAPTION>", image_size=(w, h))
     florence_text = parsed_answer["<CAPTION>"].lower()
 
-    # [2] 블랙리스트 및 타겟 키워드 정렬 (최적화)
+    # [2] 블랙리스트 및 타깃 키워드 정렬 (최적화)
     target_keywords.sort(key=len, reverse=True)
     blacklist_keywords.sort(key=len, reverse=True)
 
@@ -142,7 +142,7 @@ def process_object_odyssey(input_image_array, target_keywords, blacklist_keyword
         if re.search(rf'\b{re.escape(b_kw)}(?:s|es)?\b', florence_text):
             return {"status": "error", "message": f"위험 물건({b_kw}) 감지됨", "target": None}
 
-    # [4] 타겟 키워드 추출
+    # [4] 타깃 키워드 추출
     detected_target = None
     for t_kw in target_keywords:
         if re.search(rf'\b{re.escape(t_kw)}(?:s|es)?\b', florence_text):
@@ -150,14 +150,14 @@ def process_object_odyssey(input_image_array, target_keywords, blacklist_keyword
             break
 
     if not detected_target:
-        return {"status": "error", "message": "타겟을 찾지 못했습니다.", "target": None}
+        return {"status": "error", "message": "대상을 찾지 못했습니다.", "target": None}
 
-    # [5] YOLO-World 탐지 (중복 로직 통합 및 동기화)
+    # [5] YOLO-World 탐지 (중복 로직 통합 및 새 토크나이저 방식)
     y_model.to('cpu')
     y_model.set_classes([detected_target])
     y_model.to('cuda')
     
-    # 데이터 타입 및 텐서 동기화 (에러 방지 핵심)
+    # 텍스트 임베딩 dtype를 모델에서 가져와 맞춤(오류 방지)
     m_dtype = next(y_model.model.parameters()).dtype
     y_model.model.txt_feats = y_model.model.txt_feats.to(device='cuda', dtype=m_dtype)
 
@@ -166,7 +166,7 @@ def process_object_odyssey(input_image_array, target_keywords, blacklist_keyword
     if len(yolo_results[0].boxes) == 0:
         return {"status": "error", "message": f"'{detected_target}' 위치 탐지 실패", "target": detected_target}
 
-    # [6] SAM 2.1 누끼 추출
+    # [6] SAM 2.1 마스크 추출
     box_coords = yolo_results[0].boxes.xyxy[0].cpu().numpy().tolist()
     sam_results = s_model.predict(input_image_array, bboxes=[box_coords], device='cuda')
 
