@@ -11,7 +11,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router
 from app.utils import PROJECT_ROOT
 
-load_dotenv(PROJECT_ROOT / ".env")
+APP_ROOT = PROJECT_ROOT / "박재혁"
+
+load_dotenv(APP_ROOT / ".env")
 
 app = FastAPI(title="PO3 Object Odyssey Prototype", version="0.1.0")
 
@@ -45,4 +47,3 @@ def run() -> None:
 
 if __name__ == "__main__":
     run()
-

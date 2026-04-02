@@ -39,9 +39,9 @@ Rules:
 - Return JSON only. No markdown, no code fences, no explanation.
 - The JSON must contain exactly these keys: active_style, soft_style
 - Both prompts must preserve the same character identity, face, proportions, and core outfit details.
-- Both prompts must explicitly mention that the reference image should be used to keep the appearance consistent.
-- The prompts must ask for a real redraw or image edit, not a simple filter, recolor, or texture overlay.
-- The prompts must tell the model to keep the base character appearance from the reference image and change only the artistic style, pose energy, lighting, and background.
+- Both prompts must explicitly say the reference image is only for identity cues and should be reinterpreted as a fresh illustration.
+- The prompts must ask for a full redraw or character redesign, not a simple filter, recolor, retouch, or texture overlay.
+- The prompts must tell the model to preserve recognizable identity cues while replacing the original photo look with a new illustrated scene.
 - active_style should feel adventurous, energetic, dynamic, vivid, cinematic, with a dramatic 3/4 view, motion lines, and a bold background.
 - soft_style should feel warm, gentle, pastel, cozy, and emotionally tender, with a calm front-facing or seated pose and a soft dreamy background.
 - Keep the character name, job, and key visual traits in both prompts.
@@ -91,9 +91,9 @@ You are converting a reference image into a detailed English image-generation pr
 Rules:
 - Return JSON only. No markdown, no code fences, no explanation.
 - The JSON must contain exactly these keys: prompt, reference_description, key_visual_facts
-- Keep the character identity and key shape cues from the reference image.
-- Do not mention that the final image should look filtered or edited.
-- Focus on a prompt that another image model can use to redraw the same character in a new illustration.
+- Describe the visual identity cues that should survive a full character redesign.
+- Do not describe the image as something to filter, edit, retouch, or lightly modify.
+- Focus on a prompt that another image model can use to turn the subject into a fresh character illustration.
 - {style_rules.get(style_label, style_rules["active_style"])}
 - The prompt must be a single English paragraph.
 

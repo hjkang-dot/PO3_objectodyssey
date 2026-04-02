@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import os
 import io
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image, ImageDraw, ImageEnhance, ImageFilter, ImageFont, ImageOps
+from PIL import Image
 
 from app.prompts import reference_image_prompt
 from app.utils import load_pil_image, project_relative_path, save_pil_image
@@ -35,7 +35,14 @@ class GeminiService:
 
     def __post_init__(self) -> None:
         self.api_key = self.api_key or os.getenv("GEMINI_API_KEY") or None
-        self.text_model = os.getenv("GEMINI_TEXT_MODEL", self.text_model)
+        configured_text_model = os.getenv("GEMINI_TEXT_MODEL", self.text_model)
+        text_model_aliases = {
+            "gemini-2.0-flash": "gemini-2.5-flash",
+            "gemini-2.0-flash-001": "gemini-2.5-flash",
+            "gemini-2.0-flash-lite": "gemini-2.5-flash-lite",
+            "gemini-2.0-flash-lite-001": "gemini-2.5-flash-lite",
+        }
+        self.text_model = text_model_aliases.get(configured_text_model, configured_text_model)
         configured_image_model = os.getenv("GEMINI_IMAGE_MODEL", self.image_model)
         if configured_image_model.startswith("imagen-3"):
             configured_image_model = "gemini-2.5-flash-image"
@@ -137,52 +144,25 @@ class GeminiService:
                     return data
         return None
 
-    def _fallback_style_image(self, reference_image: Path, style_label: str, prompt: str) -> Path:
-        """Create a local stylized derivative when the API is unavailable."""
-
-        image = load_pil_image(reference_image).resize((1024, 1024))
-
-        if style_label == "active_style":
-            image = ImageEnhance.Color(image).enhance(1.45)
-            image = ImageEnhance.Contrast(image).enhance(1.25)
-            image = ImageEnhance.Sharpness(image).enhance(1.3)
-            image = image.filter(ImageFilter.DETAIL)
-            overlay = Image.new("RGBA", image.size, (255, 188, 64, 45))
-            image = Image.alpha_composite(image, overlay)
-        else:
-            image = ImageEnhance.Color(image).enhance(0.9)
-            image = ImageEnhance.Contrast(image).enhance(0.92)
-            image = image.filter(ImageFilter.SMOOTH_MORE)
-            overlay = Image.new("RGBA", image.size, (255, 235, 229, 55))
-            image = Image.alpha_composite(image, overlay)
-
-        framed = ImageOps.expand(image, border=18, fill=(255, 255, 255, 255))
-        canvas = Image.new("RGBA", framed.size, (255, 255, 255, 255))
-        canvas.alpha_composite(framed)
-
-        draw = ImageDraw.Draw(canvas)
-        label = "ACTIVE" if style_label == "active_style" else "SOFT"
-        text = f"{label} STYLE"
-        try:
-            font = ImageFont.truetype("arial.ttf", 28)
-        except Exception:  # pragma: no cover - font availability depends on OS
-            font = ImageFont.load_default()
-        draw.rounded_rectangle((24, 24, 232, 82), radius=18, fill=(0, 0, 0, 160))
-        draw.text((42, 38), text, fill=(255, 255, 255, 255), font=font)
-
-        return save_pil_image(canvas, f"{style_label}_{prompt[:24]}")
-
-    def generate_image_from_prompt(self, prompt: str, style_label: str) -> str:
-        """Generate a style-specific image from a text prompt and return a project-relative path."""
+    def generate_image_from_reference(self, prompt: str, reference_image: str, style_label: str) -> str:
+        """Generate a new illustration from a reference image plus a text prompt."""
 
         if not self.is_configured:
-            raise RuntimeError("Gemini API is not configured.")
+            raise RuntimeError(
+                "Gemini image generation is not configured. "
+                "Set GEMINI_API_KEY to create newly illustrated character images."
+            )
 
         client = self._client()
+        reference_path = Path(reference_image).resolve()
+        if not reference_path.exists():
+            raise FileNotFoundError(f"Reference image does not exist: {reference_image}")
+
+        image_obj = load_pil_image(reference_path).convert("RGB")
 
         request_kwargs: dict[str, Any] = {
             "model": self.image_model,
-            "contents": prompt,
+            "contents": [image_obj, prompt],
         }
         if genai_types is not None:
             request_kwargs["config"] = genai_types.GenerateContentConfig(response_modalities=["Image"])
@@ -200,11 +180,9 @@ class GeminiService:
         return project_relative_path(saved)
 
     def generate_image(self, prompt: str, reference_image: str, style_label: str) -> str:
-        """Compatibility wrapper for older callers."""
+        """Generate a new illustration guided by the reference image."""
 
         reference_path = Path(reference_image).resolve()
         if not reference_path.exists():
             raise FileNotFoundError(f"Reference image does not exist: {reference_image}")
-        if not self.is_configured:
-            return project_relative_path(self._fallback_style_image(reference_path, style_label, prompt))
-        return self.generate_image_from_prompt(prompt, style_label)
+        return self.generate_image_from_reference(prompt, str(reference_path), style_label)

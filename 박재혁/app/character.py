@@ -82,23 +82,23 @@ def fallback_style_prompts(character_sheet: dict[str, Any]) -> dict[str, Any]:
     original_object = character_sheet["original_object"]
     traits = ", ".join(character_sheet.get("core_visual_traits", []))
     base_instruction = (
-        "Use the reference image as the base identity. Do not apply a simple filter, recolor, "
-        "or texture overlay. Redraw the character with the same core appearance, then change the "
-        "artistic style, pose energy, lighting, and background."
+        "Use the reference image only to extract character identity cues. Reimagine the subject as a "
+        "storybook character and paint a completely new illustration. Do not apply a simple filter, "
+        "recolor, texture overlay, or photo retouch."
     )
 
     active = (
         f"{base_instruction} "
-        f"{name}, a {job}, based on the same reference image and preserving the same face, "
-        f"body shape, and distinctive details of the {original_object}. "
+        f"{name}, a {job}, should preserve the same silhouette, face placement, body shape, and "
+        f"distinctive details of the {original_object}, while becoming a clearly illustrated character. "
         f"Active and adventurous pose, vivid colors, dynamic motion, bright lighting, "
         f"dramatic 3/4 angle, motion lines, bold background, high-energy children's picture book "
         f"illustration, energetic composition, {traits}."
     )
     soft = (
         f"{base_instruction} "
-        f"{name}, a {job}, based on the same reference image and preserving the same face, "
-        f"body shape, and distinctive details of the {original_object}. "
+        f"{name}, a {job}, should preserve the same silhouette, face placement, body shape, and "
+        f"distinctive details of the {original_object}, while becoming a clearly illustrated character. "
         f"Soft and warm pose, pastel colors, gentle lighting, cozy atmosphere, front-facing or "
         f"seated pose, dreamy background, soft brush texture, children's picture book illustration, "
         f"tender composition, {traits}."
@@ -127,4 +127,3 @@ def build_style_prompts(character_sheet: dict[str, Any], gemini_service: GeminiS
     except Exception:
         parsed = {}
     return validate_style_prompts(parsed, character_sheet)
-

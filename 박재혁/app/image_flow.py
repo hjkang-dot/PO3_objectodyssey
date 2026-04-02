@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.prompts import reference_image_prompt
 from app.services.gemini_service import GeminiService
 from app.utils import resolve_reference_image_path
 
@@ -24,19 +23,29 @@ def build_reference_prompt_seed(reference_path: Path, style_label: str, gemini_s
 
 
 def compose_final_image_prompt(reference_seed: dict[str, Any], style_prompt: str, style_label: str) -> str:
-    """Combine reference description and style prompt into the final image prompt."""
+    """Combine reference description and style prompt into a character-redesign prompt."""
 
     suffix = {
-        "active_style": "bold active composition",
-        "soft_style": "soft emotional composition",
-    }.get(style_label, "illustrated composition")
+        "active_style": "high-energy cinematic picture-book scene",
+        "soft_style": "warm gentle picture-book scene",
+    }.get(style_label, "storybook illustration")
+
+    reference_description = str(reference_seed.get("reference_description") or "").strip()
+    key_visual_facts = ", ".join(reference_seed.get("key_visual_facts") or [])
 
     return (
-        f"{reference_seed['prompt']}\n\n"
-        f"Style direction: {style_prompt}\n\n"
-        f"Create a fresh illustration based on the prompt above. "
-        f"Do not apply a filter, recolor, or texture overlay. "
-        f"Keep the character identity consistent, but redraw it as a new image with a {suffix}."
+        "Use the attached reference image as identity source material, not as a final canvas.\n"
+        "Transform the referenced object or figure into a fully illustrated children's-book character.\n"
+        "Keep only the recognizable identity cues from the reference image such as silhouette, key shapes, "
+        "face placement, standout accessories, and memorable proportions.\n"
+        "Do not preserve the original photo background, lighting, texture, or camera look.\n"
+        "Do not apply a simple filter, recolor, photo effect, or overlay.\n"
+        "Create a brand-new drawn image with clean illustration edges, fresh composition, and a new background.\n\n"
+        f"Reference analysis: {reference_seed['prompt']}\n"
+        f"Reference description: {reference_description}\n"
+        f"Key visual facts to preserve: {key_visual_facts}\n\n"
+        f"Character direction: {style_prompt}\n\n"
+        f"Final goal: a {suffix} that clearly feels like the same character reimagined from the reference image."
     )
 
 
@@ -50,12 +59,7 @@ def generate_images(style_prompts: dict[str, Any], reference_image: str, gemini_
     active_prompt = compose_final_image_prompt(active_seed, str(style_prompts.get("active_style") or ""), "active_style")
     soft_prompt = compose_final_image_prompt(soft_seed, str(style_prompts.get("soft_style") or ""), "soft_style")
 
-    try:
-        active_output = gemini_service.generate_image_from_prompt(active_prompt, "active_style")
-        soft_output = gemini_service.generate_image_from_prompt(soft_prompt, "soft_style")
-    except Exception:
-        active_output = gemini_service.generate_image(active_prompt, str(reference_path), "active_style")
-        soft_output = gemini_service.generate_image(soft_prompt, str(reference_path), "soft_style")
+    active_output = gemini_service.generate_image(active_prompt, str(reference_path), "active_style")
+    soft_output = gemini_service.generate_image(soft_prompt, str(reference_path), "soft_style")
 
     return {"active_style": active_output, "soft_style": soft_output}
-
