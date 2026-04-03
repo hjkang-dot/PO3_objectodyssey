@@ -8,7 +8,7 @@ import numpy as np
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
-from odyssey_vision import blacklist_keywords, process_object_odyssey, target_keywords
+from odyssey_vision import process_object_odyssey, target_keywords
 
 app = FastAPI(title="Object Odyssey Vision API")
 
@@ -22,7 +22,7 @@ async def extract_object(file: UploadFile = File(...)) -> dict[str, str]:
     if img is None:
         raise HTTPException(status_code=400, detail="Invalid image file.")
 
-    result = process_object_odyssey(img, target_keywords, blacklist_keywords)
+    result = process_object_odyssey(img, target_keywords)
     if result["status"] == "error":
         return {"status": "fail", "message": result["message"]}
 
