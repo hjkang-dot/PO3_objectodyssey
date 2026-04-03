@@ -3,6 +3,9 @@
 #audio_module 개요
 - 음성 복제 api
 
+#버전 호환
+uv add torchaudio==2.1.2
+
 
 #오디오 백엔드 서버 실행 순서
 1. cd audio_module

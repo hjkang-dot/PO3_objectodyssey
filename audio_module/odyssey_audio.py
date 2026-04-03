@@ -67,6 +67,38 @@ async def generate_audio(request: AudioRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/generate_audio_v2")
+async def generate_audio(request: AudioRequest):
+    ref_path = f"./audios/{request.voice_id}.wav"
+
+    if not os.path.exists(ref_path):
+        raise HTTPException(status_code=404, detail="해당 목소리 샘플을 찾을 수 없습니다.")
+
+    try:
+   
+        with torch.no_grad(): 
+            wavs, sr = model.generate_voice_clone(
+                text=request.text,      
+                language="Korean",
+                ref_audio=ref_path,
+                x_vector_only_mode=True
+
+            )
+        
+        output_filename = f"output_{uuid.uuid4()}.wav"
+        output_path = os.path.join("./audios", output_filename)
+        sf.write(output_path, wavs[0], sr)
+
+        # 경로만 보낼 경우
+        # return {"status": "success", "output_path": output_path}
+        
+        # 파일을 직접 다운로드/재생하게 할 경우 (추천)
+        return FileResponse(output_path, media_type="audio/wav", filename=output_filename)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    
 if __name__ == "__main__":
     os.makedirs("./audios", exist_ok=True)
     uvicorn.run(app, host="localhost", port=8001) 
