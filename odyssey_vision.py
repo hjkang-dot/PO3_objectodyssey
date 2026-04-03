@@ -8,14 +8,29 @@ from ultralytics import YOLOWorld, SAM
 from transformers import AutoProcessor, AutoModelForCausalLM
 
 target_keywords = [
-    # 1. 동물 및 인형류
+    # 1. 피규어, 동물, 인형 및 역할놀이 소품 (범용 무기 및 판타지 아이템 포함)
+    "figure", "figurine", "miniature", "character figure", "anime figure", # 피규어 기본형 추가
     "teddy bear", "bear", "plush toy", "plushie", "stuffed animal", "action figure",
     "toy robot", "robot", "toy dinosaur", "dinosaur", "toy dragon", "dragon",
     "toy monster", "monster", "barbie doll", "baby doll", "fairy doll", "doll",
     "wizard figure", "superhero toy", "alien toy", "astronaut toy", "lego set",
     "lego", "building block", "block", "puzzle piece", "puzzle", "toy",
+    "toy sword", "toy gun", "water gun", "foam sword", "toy weapon", "toy blaster",
+    "sword", "gun", "pistol", "shield", "bow", "arrow", "wand", "magic wand", 
+    "staff", "crown", "tiara", "armor", "cape", "cloak",
 
-    # 2. 식기 및 조리 도구
+    # 2. 오감 놀이 및 보드게임 (신규 추가)
+    "slime", "play dough", "dough", "clay", "kinetic sand", "sand bucket", "toy shovel",
+    "board game", "playing card", "card", "dice", "domino", "rubiks cube", "cube",
+    "rubber duck", "bath toy", "water balloon",
+
+    # 3. 직업/역할놀이 세트 및 장난감 악기 (신규 추가)
+    "doctor kit", "toy stethoscope", "syringe toy", "toy kitchen", "cash register", 
+    "toy phone", "toy camera", "toy microphone",
+    "toy piano", "keyboard toy", "toy guitar", "ukulele", "xylophone", "tambourine", 
+    "castanets", "toy drum", "recorder",
+
+    # 4. 식기 및 조리 도구
     "thermos flask", "flask", "water bottle", "bottle", "drinking tumbler",
     "tumbler", "coffee mug", "mug", "tea cup", "cup", "drinking glass", "glass",
     "glass pitcher", "pitcher", "water jug", "jug", "tea pot", "electric kettle",
@@ -23,41 +38,41 @@ target_keywords = [
     "silver spoon", "spoon", "metal fork", "fork", "table knife", "wooden chopsticks",
     "chopsticks", "lunch box", "box", "picnic basket", "basket",
 
-    # 3. 탈것 및 이동수단
+    # 5. 탈것 및 이동수단 (RC카 등 확장)
     "toy car", "car", "toy truck", "truck", "toy train", "train", "toy bus", "bus",
     "fire engine toy", "fire engine", "police car toy", "police car", "ambulance toy",
     "ambulance", "toy airplane", "airplane", "plane", "toy helicopter", "helicopter",
     "toy rocket", "rocket", "toy spaceship", "spaceship", "toy boat", "boat",
     "toy sailboat", "sailboat", "toy submarine", "submarine", "kick scooter",
-    "scooter", "skateboard", "tricycle", "bicycle", "bike",
+    "scooter", "skateboard", "tricycle", "bicycle", "bike", "rc car", "remote control car",
 
-    # 4. 공 및 스포츠 용품
+    # 6. 공 및 스포츠 용품
     "spinning top", "top", "soccer ball", "basketball", "baseball", "tennis ball",
     "golf ball", "beach ball", "ball", "rubber balloon", "balloon", "flying kite",
     "kite", "yo-yo toy", "yoyo", "marble stone", "marble", "frisbee disc", "frisbee",
     "hula hoop", "jumping rope", "bubble wand", "safety helmet", "helmet",
 
-    # 5. 학용품 및 문구
+    # 7. 학용품 및 문구 (미술 소품 확장)
     "pencil case", "sketch book", "note book", "book", "story book", "picture book",
     "writing pen", "pen", "color pencil", "pencil", "crayon stick", "crayon",
     "felt-tip marker", "marker", "oil pastel", "paint brush", "brush", "color palette",
     "palette", "painting canvas", "canvas", "rubber eraser", "eraser", "pencil sharpener",
     "plastic ruler", "ruler", "glue stick", "glue", "scotch tape", "tape",
-    "safety scissors", "paper sticker", "sticker",
+    "safety scissors", "paper sticker", "sticker", "origami", "color paper", "beads",
 
-    # 6. 가방, 모자 및 액세서리
+    # 8. 가방, 모자 및 액세서리
     "back pack", "backpack", "shoulder bag", "tote bag", "bag", "coin purse", "purse",
     "leather wallet", "wallet", "wrist watch", "sun glasses", "eye glasses", "glasses",
     "winter hat", "baseball cap", "hat", "cap", "sun visor", "rain umbrella", "umbrella",
     "key chain", "house key", "key", "jewelry ring", "ring", "necklace", "bracelet",
     "earring", "hair clip", "hair band", "hair brush",
 
-    # 7. 신발 및 의류 액세서리
+    # 9. 신발 및 의류 액세서리
     "sneakers", "sandals", "shoes", "winter boots", "boots", "rain boots", "cotton socks",
     "socks", "winter gloves", "gloves", "woolen scarf", "scarf", "neck tie", "tie",
     "hand mirror", "mirror", "pocket comb", "comb", "hand fan", "fan",
 
-    # 8. 자연물 및 식품
+    # 10. 자연물 및 식품
     "red apple", "apple", "yellow banana", "banana", "orange fruit", "orange",
     "purple grapes", "grape", "strawberry", "cherry fruit", "cherry", "watermelon slice",
     "watermelon", "sweet corn", "corn", "orange carrot", "carrot", "red tomato", "tomato",
@@ -65,23 +80,6 @@ target_keywords = [
     "cream cake", "cake", "fruit candy", "candy", "sweet lollipop", "lollipop",
     "ice cream cone", "ice cream", "small flower", "flower", "green leaf", "leaf",
     "round stone", "stone", "tree stick", "stick", "pine cone", "sea shell", "shell"
-]
-
-blacklist_keywords = [
-    # 1. 날카로운 도구 및 위험한 물건
-    "knife", "razor", "blade", "cutter", "saw", "hammer", "screwdriver", 
-    "drill", "needle", "pin", "sword", "gun", "weapon",
-    
-    # 2. 불기구 및 화학/약품
-    "lighter", "matches", "candle", "firecracker", "stove", "poison", 
-    "chemical", "medicine", "pill", "drug",
-    
-    # 3. 현대 전자기기 / 기술물품 (동화 세계관 부정합 방지 및 판독 방해)
-    "smartphone", "tablet", "laptop", "monitor", "tv", "camera", 
-    "computer", "smartwatch",
-    
-    # 4. 해로운 매체 및 오염물
-    "cigarette", "alcohol", "wine", "beer", "vape", "trash", "garbage"
 ]
 
 # ---------------------------------------------------------
@@ -99,7 +97,7 @@ def load_all_models():
     y_model = YOLOWorld("models/yolov8m-worldv2.pt")
 
     # SAM 2.1
-    s_model = SAM("models/sam2.1_t.pt")
+    s_model = SAM("models/sam2.1_b.pt")
 
     return f_model, f_processor, y_model, s_model, device, torch_dtype
 
@@ -109,7 +107,7 @@ f_model, f_processor, y_model, s_model, device, torch_dtype = load_all_models()
 # ---------------------------------------------------------
 # 2. 핵심 처리 함수 (FastAPI/Streamlit 공용)
 # ---------------------------------------------------------
-def process_object_odyssey(input_image_array, target_keywords, blacklist_keywords):
+def process_object_odyssey(input_image_array, target_keywords):
     """
     input_image_array: OpenCV형태(BGR) 또는 NumPy 배열 이미지
     """
@@ -132,27 +130,23 @@ def process_object_odyssey(input_image_array, target_keywords, blacklist_keyword
     generated_text = f_processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
     parsed_answer = f_processor.post_process_generation(generated_text, task="<CAPTION>", image_size=(w, h))
     florence_text = parsed_answer["<CAPTION>"].lower()
+    print(florence_text)
 
-    # [2] 블랙리스트 및 타깃 키워드 정렬 (최적화)
+    # [2] 타깃 키워드 정렬 (최적화)
     target_keywords.sort(key=len, reverse=True)
-    blacklist_keywords.sort(key=len, reverse=True)
-
-    # [3] 블랙리스트 검사 (가장 먼저 수행)
-    for b_kw in blacklist_keywords:
-        if re.search(rf'\b{re.escape(b_kw)}(?:s|es)?\b', florence_text):
-            return {"status": "error", "message": f"위험 물건({b_kw}) 감지됨", "target": None}
 
     # [4] 타깃 키워드 추출
     detected_target = None
     for t_kw in target_keywords:
         if re.search(rf'\b{re.escape(t_kw)}(?:s|es)?\b', florence_text):
-            detected_target = t_kw
+            detected_target = f"{florence_text},{t_kw}"
             break
 
     if not detected_target:
         return {"status": "error", "message": "대상을 찾지 못했습니다.", "target": None}
 
     # [5] YOLO-World 탐지 (중복 로직 통합 및 새 토크나이저 방식)
+    print(detected_target)
     y_model.to('cpu')
     y_model.set_classes([detected_target])
     y_model.to('cuda')
