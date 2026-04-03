@@ -17,3 +17,4 @@ build/
 kimyonghee/
 강현준/recordings/
 audio_module/audios/*
+models/sam2.1_b.pt
