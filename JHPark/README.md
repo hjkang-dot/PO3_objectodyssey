@@ -11,7 +11,7 @@ This folder contains a demo-ready Python prototype for:
 ## Folder Layout
 
 ```text
-박재혁/
+JHPark/
   app/
   frontend/
   nukki/
@@ -26,7 +26,7 @@ This folder contains a demo-ready Python prototype for:
 ## Move Into The Project
 
 ```powershell
-cd C:\Users\user\Desktop\interactiveLLM\박재혁
+cd C:\Users\user\Desktop\interactiveLLM\JHPark
 ```
 
 ## Create And Activate A Virtual Environment
@@ -67,7 +67,7 @@ GEMINI_IMAGE_MODEL=gemini-2.5-flash-image
 Put JPG, JPEG, or PNG files into:
 
 ```text
-박재혁/nukki
+JHPark/nukki
 ```
 
 ## Run FastAPI

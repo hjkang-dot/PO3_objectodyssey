@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import router
 from app.utils import PROJECT_ROOT
 
-APP_ROOT = PROJECT_ROOT / "박재혁"
+APP_ROOT = PROJECT_ROOT / "JHPark"
 
 load_dotenv(APP_ROOT / ".env")
 

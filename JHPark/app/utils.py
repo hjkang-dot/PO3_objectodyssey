@@ -14,7 +14,7 @@ from PIL import Image
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 NUKKI_DIR = PROJECT_ROOT / "nukki"
-OUTPUTS_DIR = PROJECT_ROOT / "박재혁" / "outputs"
+OUTPUTS_DIR = PROJECT_ROOT / "JHPark" / "outputs"
 SUPPORTED_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png"}
 
 

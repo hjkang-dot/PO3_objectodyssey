@@ -11,15 +11,15 @@ def main() -> None:
 
     images = list_reference_images()
     if not images:
-        raise SystemExit("No reference images found in 박재혁/nukki.")
+        raise SystemExit("No reference images found in JHPark/nukki.")
 
-    vision_result = {"objects": ["곰인형"]}
+    vision_result = {"objects": ["고양이 인형"]}
     parent_input = {
         "name": "코코",
         "job": "우주 탐험가",
         "personality": "용감하고 다정함",
         "goal": "새로운 별을 찾고 싶어함",
-        "extra_description": "작은 별 모양 가방을 메고 다녔으면 좋겠어",
+        "extra_description": "작은 별 모양 가방을 메고 있으면 좋겠음",
     }
     reference_image = images[0]
 
@@ -29,4 +29,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
