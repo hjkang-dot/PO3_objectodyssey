@@ -51,7 +51,7 @@ def _render_story_package(story_package: dict[str, Any]) -> None:
     for idx, paragraph in enumerate(story_package.get("story_paragraphs", []), start=1):
         st.write(f"{idx}. {paragraph}")
 
-    st.write("다음 행동")
+    st.write("다음 이야기 선택")
     choices = story_package.get("choices", [])
     if choices:
         button_columns = st.columns(len(choices))
@@ -61,23 +61,23 @@ def _render_story_package(story_package: dict[str, Any]) -> None:
                     st.session_state.selected_story_choice = choice
         selected_choice = st.session_state.get("selected_story_choice")
         if selected_choice:
-            st.info(f"선택한 행동: {selected_choice['text']} ({selected_choice['id']})")
+            st.info(f"선택한 이야기: {selected_choice['text']} ({selected_choice['id']})")
 
 
 default_character_sheet = {
-    "original_object": "곰인형",
+    "original_object": "장난감 기차",
     "name": "코코",
-    "job": "우주 탐험가",
+    "job": "별빛 배달원",
     "personality": "용감하고 다정함",
-    "goal": "새로운 별을 찾고 싶어함",
-    "core_visual_traits": ["작은 별가방", "반짝이는 우주복"],
+    "goal": "밤하늘 친구들에게 반짝이는 별빛을 전해 주기",
+    "core_visual_traits": ["둥근 창문이 있는 파란 기차 몸체", "반짝이는 별 모양 전조등"],
     "tone": "모험적인",
 }
 
 if "story_character_sheet_json" not in st.session_state:
     st.session_state.story_character_sheet_json = json.dumps(default_character_sheet, ensure_ascii=False, indent=2)
 
-st.set_page_config(page_title="Story Generation", page_icon="OO", layout="wide")
+st.set_page_config(page_title="Story Generation", page_icon="📖", layout="wide")
 
 st.title("동화 생성")
 st.caption("기존 캐릭터 이미지는 유지하고, 이 페이지에서 동화만 따로 생성합니다.")
@@ -90,17 +90,17 @@ story_character_sheet_json = st.text_area(
 )
 
 extra_prompt = st.text_area(
-    "추가 프롬프트",
+    "추가 요청",
     value="",
     height=120,
-    help="기존 프롬프트 내용은 숨겨져 있습니다. 여기에 적은 추가 정보만 동화에 반영됩니다.",
+    help="여기에 적은 추가 정보만 동화 생성 시 함께 반영됩니다.",
 )
 
 story_tone_option = st.selectbox(
-    "동화 분위기 선택",
+    "동화 스타일 선택",
     STORY_TONE_OPTIONS,
     index=0,
-    help="이 값은 동화 전체 분위기를 뜻합니다. TTS 읽기 톤은 문장별로 따로 생성됩니다.",
+    help="따뜻한, 모험적인, 교훈적인 3가지 스타일 중 하나를 고르거나 랜덤으로 생성할 수 있습니다.",
 )
 
 if st.button("동화 생성", type="primary", use_container_width=True):
