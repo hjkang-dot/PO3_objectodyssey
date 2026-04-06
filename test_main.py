@@ -1,4 +1,5 @@
-from __future__ import annotations
+# from __future__ import annotations
+# uvicorn test_main:app --reload --port 8501
 
 import sys
 from pathlib import Path

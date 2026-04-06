@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>장난감 마법사</title>
+    <style>
+        /* [1. 전역 설정 & 배경 무드] */
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        body { 
+            font-family: 'Jua', sans-serif; /* 아동용 둥근 폰트 */
+            margin: 0; padding: 0; overflow: hidden;
+            background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+            color: #333; touch-action: manipulation;
+        }
+
+        /* [2. 화면 전환 레이아웃 (SPA 구조)] */
+        .screen {
+            display: none; flex-direction: column; align-items: center; justify-content: center;
+            width: 100vw; height: 100vh; position: absolute; top: 0; left: 0;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .screen.active { display: flex; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* [3. 공통 버튼 (Hero Button & Squish Effect)] */
+        .btn-primary {
+            width: 80%; max-width: 350px; padding: 25px; margin: 15px 0;
+            font-size: 32px; font-family: 'Jua', sans-serif; font-weight: bold;
+            color: white; background: #ff6b6b;
+            border: none; border-radius: 50px;
+            box-shadow: 0 10px 0 #d93838, 0 15px 20px rgba(0,0,0,0.2);
+            cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-primary:active { /* 스퀴즈(Squish) 애니메이션 */
+            transform: translateY(10px); box-shadow: 0 0 0 #d93838, 0 5px 10px rgba(0,0,0,0.2);
+        }
+        .btn-secondary { background: #4ECDC4; box-shadow: 0 10px 0 #2b9e96, 0 15px 20px rgba(0,0,0,0.2); }
+        .btn-secondary:active { box-shadow: 0 0 0 #2b9e96, 0 5px 10px rgba(0,0,0,0.2); }
+
+        /* [4. 글래스모피즘 카드 (정보 입력창)] */
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+            border: 2px solid rgba(255, 255, 255, 0.8);
+            border-radius: 30px; padding: 30px; width: 85%; max-width: 400px;
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.15); text-align: center;
+        }
+
+        /* [5. 이미지 미리보기 및 폼 요소] */
+        #imagePreview {
+            width: 150px; height: 150px; object-fit: cover; border-radius: 50%;
+            border: 5px solid white; box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            margin: 0 auto 20px auto; display: none; background: #eee;
+        }
+        input[type="text"] {
+            width: 90%; padding: 15px; margin: 10px 0; border-radius: 15px;
+            border: 2px solid #fff; font-size: 20px; font-family: 'Jua', sans-serif;
+            text-align: center; outline: none; background: rgba(255,255,255,0.9);
+        }
+
+        /* [6. 로딩 및 미니게임 요소] */
+        .loader-icon { font-size: 80px; animation: bounce 1s infinite alternate; margin-bottom: 20px; }
+        @keyframes bounce { from { transform: translateY(0) scale(1); } to { transform: translateY(-30px) scale(1.1); } }
+        .loading-text { font-size: 28px; color: #333; font-weight: bold; }
+        
+        /* 결과 텍스트 */
+        .result-title { font-size: 36px; color: #ff6b6b; margin-bottom: 10px; }
+        .result-desc { font-size: 22px; color: #555; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+    <div id="screen-home" class="screen active">
+        <h1 style="font-size: 50px; color: #fff; text-shadow: 2px 2px 0 #ff6b6b, 0 5px 15px rgba(0,0,0,0.2); margin-bottom: 50px;">✨ 마법의 동화책 ✨</h1>
+        <button class="btn-primary" onclick="showScreen('screen-input')">🚀 모험 시작하기!</button>
+    </div>
+
+    <div id="screen-input" class="screen">
+        <div class="glass-card">
+            <img id="imagePreview" src="" alt="장난감 미리보기">
+            
+            <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
+            <button class="btn-primary" id="btn-camera" onclick="document.getElementById('cameraInput').click()" style="width: 100%; font-size: 28px;">📷 장난감 사진 찍기</button>
+            
+            <div id="infoForm" style="display: none; margin-top: 20px;">
+                <input type="text" id="charName" placeholder="이름이 뭔가요? (예: 뽀로로)">
+                <input type="text" id="charTrait" placeholder="성격은 어떤가요? (예: 용감한)">
+                <button class="btn-secondary btn-primary" onclick="startMagic()" style="width: 100%; font-size: 28px; margin-top: 20px;">🪄 마법 시작!</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-loading" class="screen">
+        <div class="loader-icon">🔮</div>
+        <div class="loading-text" id="loadingMsg">가마솥에서 마법을 섞는 중...</div>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <div class="glass-card">
+            <div class="loader-icon">🎉</div>
+            <h2 class="result-title">마법 완성!</h2>
+            <div class="result-desc" id="resultDesc">주인공이 탄생했어요!</div>
+            <button class="btn-primary" onclick="location.reload()" style="font-size: 24px; margin-top: 30px;">📖 동화책 읽으러 가기</button>
+        </div>
+    </div>
+
+    <script>
+        let selectedFile = null;
+
+        // 화면 전환 함수
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // 사진 촬영 후 미리보기 및 폼 표시
+        document.getElementById('cameraInput').addEventListener('change', function(event) {
+            selectedFile = event.target.files[0];
+            if (!selectedFile) return;
+
+            // 이미지 미리보기 설정
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgPreview = document.getElementById('imagePreview');
+                imgPreview.src = e.target.result;
+                imgPreview.style.display = 'block';
+            }
+            reader.readAsDataURL(selectedFile);
+
+            // 카메라 버튼 숨기고 정보 입력창 띄우기
+            document.getElementById('btn-camera').style.display = 'none';
+            document.getElementById('infoForm').style.display = 'block';
+        });
+
+        // 마법 시작 버튼 클릭 시 (API 연쇄 호출)
+        async function startMagic() {
+            if (!selectedFile) {
+                alert("먼저 사진을 찍어주세요!"); return;
+            }
+
+            // 사용자 입력값 수집 (parent_input 용도)
+            const cName = document.getElementById('charName').value || "비밀친구";
+            const cTrait = document.getElementById('charTrait').value || "신비로운";
+
+            // 로딩 화면 전환
+            showScreen('screen-loading');
+            const loadingMsg = document.getElementById('loadingMsg');
+
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            try {
+                // [API 호출 1] 누끼 추출 (extract)
+                loadingMsg.innerText = "장난감을 도화지에 옮기는 중... 🎨";
+                const extractResponse = await fetch('/extract', { method: 'POST', body: formData });
+                const extractResult = await extractResponse.json();
+                
+                if (extractResult.status === "success") {
+                    loadingMsg.innerHTML = `<b>${extractResult.target}</b> 발견!<br>동화책을 쓰고 있어요... ✍️`;
+                    
+                    // [API 호출 2] 동화 및 캐릭터 생성 (create-art)
+                    const artPayload = {
+                        vision_result: extractResult,
+                        parent_input: { "이름": cName, "성격": cTrait }, // 부모 입력값 전송
+                        reference_image: extractResult.output_path
+                    };
+
+                    const artResponse = await fetch('/create-art', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(artPayload)
+                    });
+
+                    const artResult = await artResponse.json();
+
+                    if (artResult.status === "success") {
+                        // 결과 화면 데이터 바인딩 및 전환
+                        document.getElementById('resultDesc').innerHTML = `
+                            <b>${cTrait} ${cName}</b>(이)가<br>
+                            멋진 <b>${artResult.character_sheet.class || '주인공'}</b>(으)로<br>변신했어요!
+                        `;
+                        showScreen('screen-result');
+                        console.log("최종 데이터:", artResult);
+                    } else {
+                        throw new Error("그림 생성 실패");
+                    }
+                } else {
+                    throw new Error("장난감 찾기 실패");
+                }
+            } catch (error) {
+                console.error(error);
+                loadingMsg.innerHTML = "앗! 빗자루가 고장났어요.<br>처음부터 다시 해볼까요?";
+                setTimeout(() => location.reload(), 3000);
+            }
+        }
+    </script>
+</body>
+</html>
