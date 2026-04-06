@@ -43,7 +43,7 @@ if str(PO3_DIR) not in sys.path:
 
 load_dotenv(PO3_DIR / ".env")
 
-from app.pipeline import build_character_sheet, build_style_prompts, generate_images
+from app.pipeline import build_character_sheet, build_style_prompts, generate_images, generate_story
 from app.utils import list_reference_images, resolve_reference_image_path
 
 
@@ -85,6 +85,22 @@ async def create_art(payload: dict) -> dict:
 
     try:
         result = create_character_art(vision_result, parent_input, reference_image)
+        return {"status": "success", **result}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+@app.post("/generate-story")
+async def create_story(payload: dict) -> dict:
+    # 추가된 story 생성 엔드포인트
+    character_sheet = payload.get("character_sheet")
+    extra_prompt = str(payload.get("extra_prompt") or "")
+    story_tone = payload.get("story_tone")
+
+    if not isinstance(character_sheet, dict):
+        raise HTTPException(status_code=400, detail="character_sheet is required.")
+
+    try:
+        result = generate_story(character_sheet, extra_prompt=extra_prompt, story_tone=story_tone)
         return {"status": "success", **result}
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

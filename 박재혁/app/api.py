@@ -11,6 +11,8 @@ from app.models import (
     PipelineRequest,
     PipelineResponse,
     ReferenceImagesResponse,
+    StoryRequest,
+    StoryPackageResponse,
     StylePromptsRequest,
 )
 from app.pipeline import (
@@ -75,12 +77,16 @@ def post_generate_images(payload: GenerateImagesRequest) -> dict:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/generate-story")
-def post_generate_story(payload: GenerateStoryRequest) -> dict:
-    """Generate the children's story."""
+@router.post("/generate-story", response_model=StoryPackageResponse)
+def post_generate_story(payload: StoryRequest) -> dict:
+    """Generate the story package from a character sheet."""
 
     try:
-        return generate_story(payload.character_sheet.model_dump())
+        return generate_story(
+            payload.character_sheet.model_dump(),
+            extra_prompt=payload.extra_prompt,
+            story_tone=payload.story_tone,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 

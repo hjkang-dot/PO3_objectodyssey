@@ -8,11 +8,9 @@ from app.character import build_character_sheet as _build_character_sheet
 from app.character import build_style_prompts as _build_style_prompts
 from app.image_flow import generate_images as _generate_images
 from app.services.gemini_service import GeminiService
-from app.services.openai_service import OpenAIService
-from app.story import build_story as _build_story
+from app.story_pipeline import generate_story_package as _generate_story_package
 
 gemini_service = GeminiService()
-openai_service = OpenAIService()
 
 
 def build_character_sheet(vision_result: dict[str, Any], parent_input: dict[str, Any]) -> dict[str, Any]:
@@ -33,10 +31,14 @@ def generate_images(style_prompts: dict[str, Any], reference_image: str) -> dict
     return _generate_images(style_prompts, reference_image, gemini_service)
 
 
-def generate_story(character_sheet: dict[str, Any]) -> dict[str, Any]:
-    """Generate a short children's story from the final character sheet."""
+def generate_story(
+    character_sheet: dict[str, Any],
+    extra_prompt: str = "",
+    story_tone: str | None = None,
+) -> dict[str, Any]:
+    """Generate a short story package from the final character sheet."""
 
-    return _build_story(character_sheet, openai_service)
+    return _generate_story_package(character_sheet, extra_prompt=extra_prompt, story_tone=story_tone)
 
 
 def run_pipeline(vision_result: dict[str, Any], parent_input: dict[str, Any], reference_image: str) -> dict[str, Any]:
@@ -52,4 +54,3 @@ def run_pipeline(vision_result: dict[str, Any], parent_input: dict[str, Any], re
         "generated_images": generated_images,
         "story": story,
     }
-

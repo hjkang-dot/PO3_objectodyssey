@@ -35,12 +35,14 @@ def compose_final_image_prompt(reference_seed: dict[str, Any], style_prompt: str
 
     return (
         "Use the attached reference image as identity source material, not as a final canvas.\n"
-        "Transform the referenced object or figure into a fully illustrated children's-book character.\n"
+        "Transform the referenced object or figure into a fully illustrated children's-book character for children ages 6 to 8.\n"
         "Keep only the recognizable identity cues from the reference image such as silhouette, key shapes, "
         "face placement, standout accessories, and memorable proportions.\n"
         "Do not preserve the original photo background, lighting, texture, or camera look.\n"
         "Do not apply a simple filter, recolor, photo effect, or overlay.\n"
-        "Create a brand-new drawn image with clean illustration edges, fresh composition, and a new background.\n\n"
+        "Create a brand-new drawn image with clean illustration edges, fresh composition, a new background, and a strong toy-like character presence.\n"
+        "Make the design feel iconic and easy for a child to recognize as one recurring character.\n"
+        "Avoid washed-out pastel color treatment; use richer child-friendly colors with clear silhouette readability.\n\n"
         f"Reference analysis: {reference_seed['prompt']}\n"
         f"Reference description: {reference_description}\n"
         f"Key visual facts to preserve: {key_visual_facts}\n\n"

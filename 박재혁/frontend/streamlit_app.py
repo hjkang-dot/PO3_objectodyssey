@@ -1,8 +1,9 @@
-"""Streamlit demo UI for the PO3 prototype."""
+"""메인 캐릭터/이미지 생성 페이지."""
 
 from __future__ import annotations
 
 import base64
+import json
 import os
 import sys
 from io import BytesIO
@@ -24,13 +25,13 @@ FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
 
 
 def _reference_image_path(filename: str) -> Path:
-    """Resolve a selected reference image path inside nukki."""
+    """nukki 내부의 기준 이미지 경로를 만든다."""
 
     return ROOT_DIR / "nukki" / filename
 
 
 def _load_reference_images() -> list[str]:
-    """Load the reference image list from the backend."""
+    """백엔드에서 기준 이미지 목록을 불러온다."""
 
     try:
         response = requests.get(f"{FASTAPI_BASE_URL}/reference-images", timeout=20)
@@ -43,7 +44,7 @@ def _load_reference_images() -> list[str]:
 
 
 def _display_image_payload(value: str, caption: str) -> None:
-    """Render a generated image regardless of whether it is a path or base64."""
+    """경로 또는 base64 형태의 이미지를 화면에 보여준다."""
 
     if not value:
         st.warning(f"{caption} 이미지가 비어 있습니다.")
@@ -71,55 +72,68 @@ def _display_image_payload(value: str, caption: str) -> None:
 
 
 def _call_pipeline(payload: dict[str, Any]) -> dict[str, Any]:
-    """Call the backend pipeline endpoint."""
+    """캐릭터, 이미지, 동화를 함께 생성하는 파이프라인을 호출한다."""
 
     response = requests.post(f"{FASTAPI_BASE_URL}/pipeline", json=payload, timeout=600)
     response.raise_for_status()
     return response.json()
 
 
-st.set_page_config(page_title="PO3 Object Odyssey", page_icon="✨", layout="wide")
+default_character_sheet = {
+    "original_object": "곰인형",
+    "name": "코코",
+    "job": "우주 탐험가",
+    "personality": "용감하고 다정함",
+    "goal": "새로운 별을 찾고 싶어함",
+    "core_visual_traits": ["작은 별가방", "반짝이는 우주복"],
+    "tone": "모험적인",
+}
 
-st.title("PO3 Object Odyssey Prototype")
-st.caption("FastAPI + Streamlit demo for character sheet, styled images, and a children's story.")
+if "story_character_sheet_json" not in st.session_state:
+    st.session_state.story_character_sheet_json = json.dumps(default_character_sheet, ensure_ascii=False, indent=2)
+
+st.set_page_config(page_title="PO3 Character Studio", page_icon="OO", layout="wide")
+
+st.title("캐릭터/이미지 생성")
+st.caption("이 페이지에서는 캐릭터 시트와 이미지를 생성합니다. 동화 생성은 별도 페이지에서 진행합니다.")
 
 col_left, col_right = st.columns([1.1, 0.9], gap="large")
 
 with col_left:
-    st.subheader("1. 비전 결과 입력")
-    objects_text = st.text_input("객체 이름들", value="곰인형", help="쉼표로 여러 객체를 입력하세요. 예: 곰인형, 컵, 책")
+    st.subheader("1. 비전 입력")
+    objects_text = st.text_input("감지 객체", value="곰인형", help="쉼표로 여러 객체를 입력할 수 있습니다.")
 
-    st.subheader("2. 부모 프롬프트 입력")
+    st.subheader("2. 부모 입력")
     name = st.text_input("이름", value="코코")
     job = st.text_input("직업", value="우주 탐험가")
     personality = st.text_input("성격", value="용감하고 다정함")
-    goal = st.text_input("하고 싶은 것", value="새로운 별을 찾고 싶어함")
+    goal = st.text_input("목표", value="새로운 별을 찾고 싶어함")
+    tone = st.selectbox("기본 톤", ["따뜻한", "모험적인", "교훈적인"], index=1)
     extra_description = st.text_area(
-        "추가 설명",
-        value="작은 별 모양 가방을 메고 다녔으면 좋겠어",
+        "추가 프롬프트",
+        value="작은 별가방과 반짝이는 우주복을 입고 있어요.",
         height=100,
+        help="기존 내부 프롬프트는 화면에 보이지 않으며, 여기에 적은 내용만 추가 반영됩니다.",
     )
 
 with col_right:
-    st.subheader("3. 기준 이미지 선택")
+    st.subheader("3. 기준 이미지")
     reference_images = _load_reference_images()
     if not reference_images:
-        st.error("박재혁/nukki 폴더에서 사용할 수 있는 jpg, jpeg, png 이미지가 없습니다.")
+        st.error("nukki 폴더에서 사용할 수 있는 이미지가 없습니다.")
         selected_reference = ""
     else:
-        selected_reference = st.selectbox("기준 이미지", reference_images, index=0)
+        selected_reference = st.selectbox("기준 이미지 선택", reference_images, index=0)
         preview_path = _reference_image_path(selected_reference)
         if preview_path.exists():
             st.image(str(preview_path), caption=f"기준 이미지: {selected_reference}", use_container_width=True)
 
-st.divider()
-
-run_clicked = st.button("캐릭터 생성 시작", type="primary", use_container_width=True)
+run_clicked = st.button("캐릭터/이미지 생성", type="primary", use_container_width=True)
 
 if run_clicked:
     objects = [item.strip() for item in objects_text.split(",") if item.strip()]
     if not selected_reference:
-        st.error("기준 이미지를 선택해야 합니다.")
+        st.error("기준 이미지를 먼저 선택해 주세요.")
     else:
         payload = {
             "vision_result": {"objects": objects},
@@ -129,38 +143,39 @@ if run_clicked:
                 "personality": personality,
                 "goal": goal,
                 "extra_description": extra_description,
+                "tone": tone,
             },
             "reference_image": selected_reference,
         }
 
         try:
-            with st.spinner("캐릭터, 이미지, 동화를 생성하는 중..."):
+            with st.spinner("캐릭터와 이미지를 생성하는 중입니다..."):
                 result = _call_pipeline(payload)
 
-            st.success("생성이 완료되었습니다.")
+            result["character_sheet"]["tone"] = tone
+            st.session_state.story_character_sheet_json = json.dumps(
+                result["character_sheet"], ensure_ascii=False, indent=2
+            )
+            st.session_state.latest_story_package = result.get("story", {})
+
+            st.success("캐릭터와 이미지 생성이 완료되었습니다.")
 
             left, right = st.columns([1, 1], gap="large")
             with left:
-                st.subheader("Character Sheet")
+                st.subheader("캐릭터 시트")
                 st.json(result["character_sheet"])
-                st.subheader("Style Prompts")
-                st.write("Active Style")
+                st.subheader("스타일 프롬프트")
+                st.write("활동형")
                 st.code(result["style_prompts"]["active_style"])
-                st.write("Soft Style")
+                st.write("부드러운형")
                 st.code(result["style_prompts"]["soft_style"])
 
             with right:
-                st.subheader("Generated Images")
-                _display_image_payload(result["generated_images"]["active_style"], "Active Style")
-                _display_image_payload(result["generated_images"]["soft_style"], "Soft Style")
+                st.subheader("생성 이미지")
+                _display_image_payload(result["generated_images"]["active_style"], "활동형")
+                _display_image_payload(result["generated_images"]["soft_style"], "부드러운형")
 
-            st.subheader("Story")
-            st.markdown(f"### {result['story']['title']}")
-            for sentence in result["story"]["story"]:
-                st.write(f"- {sentence}")
-
-            st.subheader("Raw Pipeline Result")
-            st.json(result)
+            st.info("동화 생성은 왼쪽 사이드바의 Story Generation 페이지에서 이어서 진행할 수 있습니다.")
         except requests.HTTPError as exc:
             detail = ""
             try:
@@ -170,4 +185,3 @@ if run_clicked:
             st.error(f"백엔드 오류: {detail or exc}")
         except Exception as exc:
             st.error(f"실행 중 오류가 발생했습니다: {exc}")
-

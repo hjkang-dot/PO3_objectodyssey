@@ -20,6 +20,7 @@ def fallback_character_sheet(vision_result: dict[str, Any], parent_input: dict[s
     personality = str(parent_input.get("personality") or "warm and brave")
     goal = str(parent_input.get("goal") or "wants to discover something new")
     extra = str(parent_input.get("extra_description") or "").strip()
+    tone = str(parent_input.get("tone") or "따뜻한").strip()
 
     traits = [
         f"based on the appearance of {original_object}",
@@ -36,7 +37,7 @@ def fallback_character_sheet(vision_result: dict[str, Any], parent_input: dict[s
         "personality": personality,
         "goal": goal,
         "core_visual_traits": traits[:5],
-        "tone": "warm, adventurous, and child-friendly",
+        "tone": tone,
     }
 
 
@@ -83,25 +84,26 @@ def fallback_style_prompts(character_sheet: dict[str, Any]) -> dict[str, Any]:
     traits = ", ".join(character_sheet.get("core_visual_traits", []))
     base_instruction = (
         "Use the reference image only to extract character identity cues. Reimagine the subject as a "
-        "storybook character and paint a completely new illustration. Do not apply a simple filter, "
-        "recolor, texture overlay, or photo retouch."
+        "storybook character for children ages 6 to 8 and paint a completely new illustration. "
+        "Give the character a memorable toy-like silhouette, readable facial expression, and a strong "
+        "hero-character presence. Do not apply a simple filter, recolor, texture overlay, or photo retouch."
     )
 
     active = (
         f"{base_instruction} "
         f"{name}, a {job}, should preserve the same silhouette, face placement, body shape, and "
         f"distinctive details of the {original_object}, while becoming a clearly illustrated character. "
-        f"Active and adventurous pose, vivid colors, dynamic motion, bright lighting, "
-        f"dramatic 3/4 angle, motion lines, bold background, high-energy children's picture book "
-        f"illustration, energetic composition, {traits}."
+        f"Active and adventurous pose, vivid but controlled colors, dynamic motion, bright lighting, "
+        f"dramatic 3/4 angle, motion lines, bold background, cinematic toy-like children's character design, "
+        f"appealing 3D storybook energy, iconic silhouette, collectible-character readability, energetic composition, {traits}."
     )
     soft = (
         f"{base_instruction} "
         f"{name}, a {job}, should preserve the same silhouette, face placement, body shape, and "
         f"distinctive details of the {original_object}, while becoming a clearly illustrated character. "
-        f"Soft and warm pose, pastel colors, gentle lighting, cozy atmosphere, front-facing or "
-        f"seated pose, dreamy background, soft brush texture, children's picture book illustration, "
-        f"tender composition, {traits}."
+        f"Soft and warm pose, rich friendly colors instead of washed-out pastel tones, gentle lighting, cozy atmosphere, "
+        f"front-facing or seated pose, dreamy but readable background, soft stylized texture, storybook character illustration, "
+        f"lovable hero-toy presence, iconic silhouette, tender composition, {traits}."
     )
     return {"active_style": active, "soft_style": soft}
 
