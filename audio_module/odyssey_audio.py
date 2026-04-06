@@ -1,5 +1,5 @@
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.responses import FileResponse # 파일 전송을 위해 추가
 from pydantic import BaseModel
 from typing import List
@@ -10,9 +10,14 @@ import uuid # 유니크한 파일명을 위해 추가
 from qwen_tts import Qwen3TTSModel 
 from IPython.display import Audio, display
 import numpy as np
+from dotenv import load_dotenv
+from openai import OpenAI
 
+
+load_dotenv()
 
 app = FastAPI()
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 #디바이스 설정
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -162,3 +167,29 @@ async def generate_audio(request: VCRequest):
 if __name__ == "__main__":
     os.makedirs("./audios", exist_ok=True)
     uvicorn.run(app, host="localhost", port=8001) 
+
+
+#STT 기능 
+@app.post("/stt")
+async def speech_to_text(file: UploadFile = File(...)):
+    # 1. 파일 확장자 검증 (선택 사항)
+    allowed_extensions = ["mp3", "mp4", "mpeg", "mpga", "m4a", "wav", "webm"]
+    extension = file.filename.split(".")[-1].lower()
+    
+    if extension not in allowed_extensions:
+        raise HTTPException(status_code=400, detail=f"지원하지 않는 파일 형식입니다: {extension}")
+
+    try:
+        # 2. 업로드된 파일을 메모리에서 읽어 OpenAI API로 전달
+        # file.file은 바이너리 스트림이므로, name을 포함한 튜플 형태로 전달해야 API가 인식합니다.
+        result = client.audio.transcriptions.create(
+            model="whisper-1", # gpt-4o-mini는 전사 모델명이 whisper-1으로 통용됩니다.
+            file=(file.filename, await file.read(), file.content_type),
+            language="ko"
+        )
+        
+        # 3. 결과 텍스트 반환
+        return {"text": result.text}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
