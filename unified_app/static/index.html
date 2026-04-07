@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Object-Odyssey</title>
+    <style>
+        * { box-sizing: border-box; }
+
+        @import url('https://fonts.googleapis.com/css2?family=Jua&display=swap');
+        body { 
+            font-family: 'Jua', sans-serif; margin: 0; padding: 0; 
+            overflow-x: hidden; overflow-y: auto; 
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            background-attachment: fixed; 
+            color: #444; touch-action: manipulation; text-align: center;
+        }
+
+        .screen {
+            display: none; flex-direction: column; align-items: center; justify-content: flex-start;
+            min-height: 100vh; 
+            width: 100vw; position: absolute; top: 0; left: 0;
+            padding: 15px; 
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .screen.active { display: flex; position: relative; } 
+        #screen-home, #screen-loading, #screen-result { justify-content: center; }
+
+        @keyframes popIn { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+
+        h1 {
+            font-size: 45px; color: #FFD166; 
+            margin-bottom: 30px; line-height: 1.2; margin-top: 30px;
+            text-shadow: 
+                -3px -3px 0 #FF9F1C, 3px -3px 0 #FF9F1C, 
+                -3px 3px 0 #FF9F1C, 3px 3px 0 #FF9F1C, 
+                0 8px 0 #E27D60; 
+            animation: floating 3s ease-in-out infinite;
+        }
+        @keyframes floating { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+        .btn-primary {
+            width: 100%; max-width: 320px; padding: 20px; margin: 10px 0;
+            font-size: 28px; font-family: 'Jua', sans-serif; font-weight: bold;
+            color: white; background: #FF9F1C; 
+            border: 4px solid #fff; border-radius: 40px; 
+            box-shadow: 0 8px 0 #E27D60, 0 12px 15px rgba(0,0,0,0.15); 
+            cursor: pointer; transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-primary:active { transform: translateY(8px); box-shadow: 0 0 0 #E27D60; }
+        
+        .btn-secondary { background: #06D6A0; box-shadow: 0 8px 0 #05A87D, 0 12px 15px rgba(0,0,0,0.15); }
+        .btn-secondary:active { transform: translateY(8px); box-shadow: 0 0 0 #05A87D; }
+
+        .btn-choice {
+            background: #118AB2; box-shadow: 0 8px 0 #0C6B8A, 0 12px 15px rgba(0,0,0,0.15); 
+            font-size: 22px; padding: 15px; margin: 8px 0;
+        }
+        .btn-choice:active { transform: translateY(8px); box-shadow: 0 0 0 #0C6B8A; }
+        
+        .wobble { animation: wobble 2s infinite; }
+        @keyframes wobble {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(-2deg); }
+            75% { transform: scale(1.05) rotate(2deg); }
+        }
+
+        .cute-card {
+            background: #ffffff; border: 5px solid #FFD166; border-radius: 35px; 
+            padding: 20px; width: 100%; max-width: 380px; margin-bottom: 30px;
+            box-shadow: 0 12px 0 rgba(255, 209, 102, 0.4); position: relative;
+        }
+
+        .story-container { width: 100%; max-width: 450px; text-align: left; }
+        .story-title { font-size: 30px; color: #118AB2; text-align: center; margin-bottom: 15px; text-shadow: 1px 1px #fff; }
+        .story-image { width: 100%; border-radius: 20px; border: 4px solid #FFD166; margin-bottom: 15px; }
+        .story-paragraph { font-size: 22px; line-height: 1.6; color: #333; margin-bottom: 15px; background: #fff; padding: 15px; border-radius: 20px; border: 2px dashed #06D6A0; }
+
+        #imagePreview, #generatedCharPreview {
+            width: 150px; height: 150px; object-fit: cover; border-radius: 20px;
+            border: 5px solid #FFD166; box-shadow: 0 5px 0 #FFE8A1;
+            margin: 0 auto 15px auto; display: none; background: #fff;
+        }
+
+        .helper-text { 
+            font-size: 18px; color: #FF9F1C; margin-top: 10px; font-weight: bold; 
+            background: #fff; padding: 10px; border-radius: 15px; border: 3px dashed #FFD166;
+        }
+        
+        .input-group { display: flex; align-items: center; justify-content: space-between; margin: 10px 0; gap: 10px; }
+        input[type="text"] {
+            flex: 1; padding: 12px; border-radius: 20px; border: 4px solid #E0F6FF; 
+            font-size: 18px; font-family: 'Jua', sans-serif; text-align: center; 
+            outline: none; background: #fff; box-shadow: inset 0 3px 6px rgba(0,0,0,0.05);
+            width: 100%; 
+        }
+        input[type="text"]:focus { border-color: #FFD166; }
+        
+        .btn-mic {
+            flex-shrink: 0; 
+            background: #FFD166; border: 3px solid #fff; border-radius: 50%; width: 50px; height: 50px;
+            font-size: 22px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 5px 0 #E2B852; transition: transform 0.1s; padding: 0;
+        }
+        .btn-mic:active { transform: translateY(5px); box-shadow: 0 0 0 #E2B852; }
+
+        .loader-icon { font-size: 80px; animation: jump 0.5s infinite alternate; margin-bottom: 10px; }
+        @keyframes jump { from { transform: translateY(0); } to { transform: translateY(-30px); } }
+        .loading-text { font-size: 24px; font-weight: bold; color: #118AB2; background: #fff; padding: 10px 20px; border-radius: 25px; border: 3px solid #E0F6FF;}
+
+        /* 동화 스타일 선택 버튼 */
+        .tone-selector { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 15px 0; }
+        .tone-btn {
+            padding: 12px 20px; font-size: 18px; font-family: 'Jua', sans-serif;
+            border-radius: 25px; border: 4px solid #E0F6FF; background: #fff;
+            color: #444; cursor: pointer; transition: all 0.2s;
+            box-shadow: 0 4px 0 #ddd;
+        }
+        .tone-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #ddd; }
+        .tone-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #ddd; }
+        .tone-btn.selected {
+            background: #FF9F1C; color: #fff; border-color: #FFD166;
+            box-shadow: 0 4px 0 #E27D60;
+        }
+
+        /* 이미지 스타일 선택 버튼 */
+        .image-style-btn {
+            padding: 10px 18px; font-size: 16px; font-family: 'Jua', sans-serif;
+            border-radius: 20px; border: 3px solid #E0F6FF; background: #fff;
+            color: #444; cursor: pointer; transition: all 0.2s;
+            box-shadow: 0 4px 0 #ddd;
+        }
+        .image-style-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 0 #ddd; }
+        .image-style-btn:active { transform: translateY(4px); box-shadow: 0 0 0 #ddd; }
+        .image-style-btn.selected {
+            background: #06D6A0; color: #fff; border-color: #05A87D;
+            box-shadow: 0 4px 0 #048C68;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="screen-home" class="screen active">
+        <h1>✨ Object-<br>Odyssey ✨</h1>
+        <p style="font-size: 24px; color: #118AB2; font-weight: bold; margin-top: -10px; margin-bottom: 40px; text-shadow: 1px 1px 0 #fff;">
+            사진 한 장으로 뚝딱!<br>우리 아이 맞춤형 동화책
+        </p>
+        <button class="btn-primary wobble" onclick="showScreen('screen-voice-clone')">🚀 모험 시작하기!</button>
+        <button class="btn-secondary" onclick="loadLibrary()" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff;">📚 내 보관함 가기</button>
+    </div>
+
+    <!-- 보관함 화면 -->
+    <div id="screen-library" class="screen">
+        <h2 style="font-size: 34px; color: #FF9F1C; margin: 20px 0; text-shadow: 2px 2px 0 #fff;">📚 내 보관함</h2>
+        <div id="libraryList" style="width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; align-items: center; overflow-y: auto; padding-bottom: 20px;">
+            <!-- 이야기 목록이 여기에 동적으로 추가됩니다 -->
+        </div>
+        <button class="btn-secondary" onclick="showScreen('screen-home')" style="margin-top: 20px; font-size: 20px; border-radius: 30px; box-shadow: 0 5px 0 #05A87D; padding: 10px 20px;">⬅️ 홈으로 돌아가기</button>
+    </div>
+
+    <!-- 목소리 복제 화면 추가 -->
+    <div id="screen-voice-clone" class="screen">
+        <div class="cute-card">
+            <h2 style="color: #FF9F1C;">👩‍👦 엄마 아빠 목소리로<br>동화를 읽어줄까요?</h2>
+            <p style="font-size: 18px; color: #118AB2; margin-top: 10px;">
+                버튼을 <b>누르고 있는 동안</b> 아래 문장을 또박또박 읽어주세요!
+            </p>
+            <div style="background: #FFF3D6; padding: 15px; border-radius: 15px; border: 2px dashed #FF9F1C; margin: 15px 0;">
+                <b style="font-size: 20px; color: #E27D60;">"안녕? 나는 세상에서 가장 재미있는 이야기를 들려줄 마법사야!"</b>
+            </div>
+            
+            <button id="btnVoiceClone" class="btn-primary" style="background:#06D6A0; box-shadow: 0 8px 0 #05A87D; font-size: 24px; width: 100%; border-radius: 30px;">
+                🎤 마이크 누르고 말하기
+            </button>
+            <div id="cloneResultText" style="margin-top: 10px; font-weight: bold; color: #118AB2; min-height: 24px;"></div>
+            
+            <hr style="border: 1px dashed #ccc; margin: 20px 0;">
+            <button class="btn-secondary" onclick="showScreen('screen-input')" style="background:#ddd; box-shadow: 0 5px 0 #bbb; color:#555; padding: 10px 20px; font-size:18px;">
+                ⏭️ 건너뛰고 기본 목소리 사용하기
+            </button>
+        </div>
+    </div>
+
+    <div id="screen-input" class="screen">
+        <div class="cute-card">
+            <img id="imagePreview" src="" alt="장난감 미리보기">
+            
+            <input type="file" id="cameraInput" accept="image/*" capture="camera" style="display:none;">
+            
+            <div id="cameraArea">
+                <button class="btn-primary" onclick="document.getElementById('cameraInput').click()" style="width: 100%; font-size: 26px;">📷 장난감 찰칵!</button>
+                <div class="helper-text">💡 바닥이나 책상에 두고 찍어요!</div>
+            </div>
+            
+            <div id="infoForm" style="display: none; margin-top: 5px;">
+                <div class="input-group">
+                    <input type="text" id="charName" placeholder="이름 (예: 뽀로로)">
+                    <button class="btn-mic stt-btn" data-target="charName" title="누르고 말하기">🎤</button>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="charTrait" placeholder="성격 (예: 용감한)">
+                    <button class="btn-mic stt-btn" data-target="charTrait" title="누르고 말하기">🎤</button>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="charPlace" placeholder="사는 곳 (예: 우주별)">
+                    <button class="btn-mic" onclick="startSTT('charPlace')" title="목소리로 답하기">🎤</button>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="charGoal" placeholder="목표 (예: 보물찾기)">
+                    <button class="btn-mic" onclick="startSTT('charGoal')" title="목소리로 답하기">🎤</button>
+                </div>
+                
+                <!-- 그림 스타일 선택 UI -->
+                <div style="margin-top: 20px; width: 100%;">
+                    <h3 style="color: #118AB2; font-size: 20px; margin-bottom: 5px;">🎨 어떤 느낌의 그림이 좋을까요?</h3>
+                    <div class="tone-selector">
+                        <button class="image-style-btn selected" data-style="active_style" onclick="selectImageStyle(this)">🏃 활동적인</button>
+                        <button class="image-style-btn" data-style="soft_style" onclick="selectImageStyle(this)">🌸 따뜻한</button>
+                    </div>
+                </div>
+
+                <button class="btn-secondary btn-primary wobble" onclick="startMagic()" style="width: 100%; font-size: 26px; margin-top: 15px;">🪄 마법 시작!</button>
+                <button class="btn-secondary" onclick="document.getElementById('cameraInput').click()" style="width: 100%; font-size: 20px; margin-top: 10px; background: #999; box-shadow: 0 5px 0 #777;">🔄 사진 다시 찍기</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-loading" class="screen">
+        <div class="loader-icon" id="loadingIcon">🚀</div>
+        <div class="loading-text" id="loadingMsg">가마솥에서 마법을 섞는 중...<br>(조금만 기다려주세요!)</div>
+    </div>
+
+    <div id="screen-result" class="screen">
+        <div class="cute-card">
+            <img id="generatedCharPreview" src="" alt="생성된 주인공" onclick="openImageModal(this.src)" style="cursor: pointer;" title="클릭해서 크게 보기">
+            <button class="btn-secondary" onclick="openImageModal(document.getElementById('generatedCharPreview').src)" style="font-size: 16px; margin-top: -10px; margin-bottom: 10px; background: #118AB2; box-shadow: 0 4px 0 #0d6b8a; border: none; border-radius: 10px; padding: 5px 15px; color: white; cursor: pointer;">🔍 크게 보기</button>
+            <div class="loader-icon" style="animation: none;">🎉</div>
+            <h2 style="font-size: 34px; color: #FF9F1C; margin: 10px 0; text-shadow: 2px 2px 0 #fff;">마법 완성!</h2>
+            <div id="resultDesc" style="font-size: 20px; line-height: 1.5; color: #444; font-weight: bold; background: #F8F9FA; border-radius: 20px; padding: 15px; border: 2px dashed #FFD166;">
+                주인공이 탄생했어요!
+            </div>
+
+            <!-- 동화 스타일 선택 -->
+            <div style="margin-top: 20px; width: 100%;">
+                <h3 style="color: #118AB2; font-size: 22px; margin-bottom: 5px;">🎨 어떤 동화를 만들까요?</h3>
+                <p style="font-size: 16px; color: #888; margin-bottom: 10px;">스타일을 골라 보세요!</p>
+                <div class="tone-selector">
+                    <button class="tone-btn selected" data-tone="랜덤" onclick="selectTone(this)">🎲 랜덤</button>
+                    <button class="tone-btn" data-tone="따뜻한" onclick="selectTone(this)">☀️ 따뜻한</button>
+                    <button class="tone-btn" data-tone="모험적인" onclick="selectTone(this)">⚔️ 모험적인</button>
+                    <button class="tone-btn" data-tone="교훈적인" onclick="selectTone(this)">📚 교훈적인</button>
+                </div>
+            </div>
+
+            <button class="btn-secondary btn-primary wobble" onclick="startStoryGen()" style="font-size: 22px; margin-top: 20px;">📖 동화책 읽으러 가기</button>
+        </div>
+    </div>
+
+    <div id="screen-story" class="screen" style="padding-top: 40px;">
+        <div class="story-container">
+            <h2 id="storyTitle" class="story-title">동화 제목</h2>
+            <!-- TTS 읽어주기 버튼 -->
+            <button id="ttsButton" class="btn-secondary" onclick="toggleTTS()" style="margin-bottom: 20px; background: #FF9F1C; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #E58E1A; display: block; margin-left: auto; margin-right: auto;">🔊 동화 당장 읽기!</button>
+
+            <!-- 캐릭터 이미지를 이야기 윗부분에 고정 노출 (클릭 시 크게 보기 모달 띄움) -->
+            <img id="storyImage" class="story-image" src="" alt="이야기 그림" onclick="openImageModal(this.src)" style="display:none; cursor:pointer;" title="클릭해서 크게 보기">
+            
+            <div id="storyContent">
+                <!-- 이야기 단락들이 동적으로 들어갑니다. -->
+            </div>
+            
+            <div id="storyChoices" style="margin-top: 25px; border-top: 2px dashed #118AB2; padding-top: 15px; display: none;">
+                <h3 style="color:#118AB2; margin-bottom: 10px;">다음에 무슨 일이 생길까?</h3>
+                <div id="choiceButtons"></div>
+            </div>
+
+            <!-- 저장 버튼: 항상 제일 마지막에 고정 -->
+            <div id="saveBtnContainer" style="margin-top: 25px; border-top: 2px dashed #FFD166; padding-top: 20px; display: none;">
+                <button class="btn-primary" style="background:#06D6A0; box-shadow: 0 8px 0 #05A87D; width:100%; font-size: 22px;" onclick="saveCurrentStory()">💾 지금 동화책 저장하기</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 이미지 크게 보기 모달 -->
+    <div id="imageModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; justify-content:center; align-items:center;" onclick="this.style.display='none'">
+        <img id="modalImage" style="max-width:90%; max-height:90%; object-fit:contain; border-radius:20px; box-shadow: 0 0 20px rgba(0,0,0,0.5);">
+    </div>
+
+    <script>
+        function openImageModal(src) {
+            if (!src) return;
+            document.getElementById('modalImage').src = src;
+            document.getElementById('imageModal').style.display = 'flex';
+        }
+
+        let selectedFile = null;
+        let globalCharacterSheet = null; // 이미지 생성 후 받아온 시트 저장용
+        let charImageSrc = null;
+        let currentStoryTitle = "";
+        let currentStoryParagraphs = [];
+        let currentTtsScript = [];
+        let ttsPlaying = false;
+        let ttsAudioPlayer = null;
+        let selectedStoryTone = "랜덤"; // 동화 스타일 선택값
+
+        function selectTone(btn) {
+            // 기존 선택 해제
+            document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('selected'));
+            // 새로운 선택 활성화
+            btn.classList.add('selected');
+            selectedStoryTone = btn.getAttribute('data-tone');
+        }
+
+        let selectedImageStyle = "active_style"; // 그림 스타일 선택값
+        function selectImageStyle(btn) {
+            // 기존 선택 해제
+            document.querySelectorAll('.image-style-btn').forEach(b => b.classList.remove('selected'));
+            // 새로운 선택 활성화
+            btn.classList.add('selected');
+            selectedImageStyle = btn.getAttribute('data-style');
+        }
+
+        async function toggleTTS() {
+            if (!currentTtsScript || currentTtsScript.length === 0) return;
+            
+            const btn = document.getElementById("ttsButton");
+            
+            if (ttsPlaying) {
+                if (ttsAudioPlayer) {
+                    ttsAudioPlayer.pause();
+                    ttsAudioPlayer.currentTime = 0;
+                    ttsAudioPlayer = null;
+                }
+                ttsPlaying = false;
+                btn.innerText = "🔊 동화 당장 읽기!";
+                return;
+            }
+            
+            ttsPlaying = true;
+            btn.innerText = "⏳ 목소리 마법을 부리는 중...(잠시만 기다려요!)";
+            
+            try {
+                // 백엔드 형식(VCContent)에 맞게 데이터 변환: line -> text, tone -> instruct
+                const audioData = currentTtsScript.map(item => ({
+                    text: item.line,
+                    instruct: item.tone
+                }));
+
+                // 발화 데이터 백엔드로 전송
+                const response = await fetch("/generate_audio_v2", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        voice_id: "default_women",
+                        data: audioData
+                    })
+                });
+                
+                if (!response.ok) throw new Error("TTS 실패");
+                
+                const result = await response.json();
+                
+                ttsAudioPlayer = new Audio(result.url + "?t=" + new Date().getTime());
+                ttsAudioPlayer.onended = () => {
+                    ttsPlaying = false;
+                    btn.innerText = "🔊 다시 읽어주기!";
+                };
+                ttsAudioPlayer.play();
+                
+                btn.innerText = "⏹️ 읽기 멈추기";
+
+            } catch(e) {
+                console.error(e);
+                alert("음성 생성에 실패했어요. ㅠㅠ");
+                ttsPlaying = false;
+                btn.innerText = "🔊 동화 당장 읽기!";
+            }
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+            window.scrollTo(0, 0);
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        // --- Audio Backend 연동 기능 (Push-to-Talk) ---
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        function setupPushToTalk(buttonElement, onStart, onStop) {
+            // 마우스 이벤트
+            buttonElement.addEventListener('mousedown', (e) => { e.preventDefault(); onStart(); });
+            buttonElement.addEventListener('mouseup', (e) => { e.preventDefault(); onStop(); });
+            buttonElement.addEventListener('mouseleave', (e) => { if(mediaRecorder && mediaRecorder.state === 'recording') onStop(); });
+            // 터치 이벤트
+            buttonElement.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(); });
+            buttonElement.addEventListener('touchend', (e) => { e.preventDefault(); onStop(); });
+            buttonElement.addEventListener('touchcancel', (e) => { if(mediaRecorder && mediaRecorder.state === 'recording') onStop(); });
+        }
+
+        async function startRecording() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.addEventListener("dataavailable", event => {
+                    audioChunks.push(event.data);
+                });
+                mediaRecorder.start();
+                return true;
+            } catch (err) {
+                console.error("마이크 접근 오류", err);
+                alert("마이크 사용 권한이 필요해요!");
+                return false;
+            }
+        }
+
+        async function stopRecordingAndSend(endpoint, formData, onSuccess, onLoading) {
+            if (!mediaRecorder) return;
+            mediaRecorder.addEventListener("stop", async () => {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                formData.append("file", audioBlob, "record.webm");
+                if (onLoading) onLoading();
+                try {
+                    const response = await fetch(endpoint, { method: "POST", body: formData });
+                    const result = await response.json();
+                    onSuccess(result);
+                } catch (e) {
+                    console.error("오디오 통신 에러", e);
+                }
+            });
+            mediaRecorder.stop();
+            mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        }
+
+        document.getElementById('cameraInput').addEventListener('change', function(event) {
+            selectedFile = event.target.files[0];
+            if (!selectedFile) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgPreview = document.getElementById('imagePreview');
+                imgPreview.src = e.target.result;
+                imgPreview.style.display = 'block';
+            }
+            reader.readAsDataURL(selectedFile);
+
+            document.getElementById('cameraArea').style.display = 'none';
+            document.getElementById('infoForm').style.display = 'block';
+
+            // STT 버튼 이벤트 플러그 (Lazy setup)
+            if(!window.sttSetupDone) {
+                document.querySelectorAll('.stt-btn').forEach(btn => {
+                    const targetId = btn.getAttribute('data-target');
+                    setupPushToTalk(btn, 
+                        async () => {
+                            document.getElementById(targetId).placeholder = "듣고 있어요...";
+                            btn.innerText = "🔴";
+                            await startRecording();
+                        },
+                        () => {
+                            btn.innerText = "🎤";
+                            const fd = new FormData();
+                            stopRecordingAndSend("/stt", fd, (res) => {
+                                if (res.text) {
+                                    document.getElementById(targetId).value = res.text;
+                                }
+                            }, () => {
+                                document.getElementById(targetId).placeholder = "받아쓰는 중...";
+                            });
+                        }
+                    );
+                });
+                window.sttSetupDone = true;
+            }
+        });
+
+        // Voice Clone 이벤트 연동
+        document.addEventListener("DOMContentLoaded", () => {
+            const btnVoiceClone = document.getElementById("btnVoiceClone");
+            const cloneResultText = document.getElementById("cloneResultText");
+            if (btnVoiceClone) {
+                setupPushToTalk(btnVoiceClone, 
+                    async () => {
+                        btnVoiceClone.innerText = "🔴 녹음 중...(계속 누르고 읽어주세요)";
+                        cloneResultText.innerText = "";
+                        await startRecording();
+                    },
+                    () => {
+                        btnVoiceClone.innerText = "🎤 마이크 누르고 말하기";
+                        const fd = new FormData();
+                        fd.append("voice_id", "default_women");
+                        stopRecordingAndSend("/save-reference-audio", fd, (res) => {
+                            if (res.status === "success") {
+                                cloneResultText.innerText = "✅ 성공적으로 저장되었어요! 이제 모험을 떠나요.";
+                                setTimeout(() => showScreen('screen-input'), 1500);
+                            }
+                        }, () => {
+                            cloneResultText.innerText = "⏳ 목소리 분석 중...";
+                        });
+                    }
+                );
+            }
+        });
+
+        async function startMagic() {
+            if (!selectedFile) { alert("먼저 사진을 찍어주세요! 📷"); return; }
+
+            const cName = document.getElementById('charName').value.trim();
+            const cTrait = document.getElementById('charTrait').value.trim();
+            const cPlace = document.getElementById('charPlace').value.trim();
+            const cGoal = document.getElementById('charGoal').value.trim(); 
+
+            if (!cName || !cTrait || !cPlace || !cGoal) {
+                alert("이름, 성격, 사는 곳, 목표를 모두 입력해주세요! 🚀");
+                return; 
+            }
+
+            showScreen('screen-loading');
+            const loadingMsg = document.getElementById('loadingMsg');
+            const formData = new FormData();
+            formData.append("file", selectedFile);
+
+            try {
+                loadingMsg.innerHTML = "장난감을 도화지에 옮기는 중... 🎨";
+                const extractResponse = await fetch('/extract', { method: 'POST', body: formData });
+                const extractResult = await extractResponse.json();
+                
+                if (extractResult.status === "success") {
+                    loadingMsg.innerHTML = `<b>${cName}</b> 발견!<br>멋진 캐릭터로 변신 중이에요... ✨`;
+                    
+                    const artPayload = {
+                        vision_result: extractResult,
+                        parent_input: { "name": cName, "personality": cTrait, "job": cPlace, "goal": cGoal }, // job을 사는곳으로 매핑할수도 있음
+                        reference_image: extractResult.output_path,
+                        image_style: selectedImageStyle
+                    };
+
+                    const artResponse = await fetch('/create-art', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(artPayload)
+                    });
+
+                    const artResult = await artResponse.json();
+
+                    if (artResult.status === "success") {
+                        globalCharacterSheet = artResult.character_sheet;
+                        
+                        // 생성된 이미지 표시
+                        const gImagePreview = document.getElementById('generatedCharPreview');
+                        const imgPathValue = artResult.generated_images && artResult.generated_images[selectedImageStyle];
+                        if (imgPathValue) {
+                            let imgPath = imgPathValue;
+                            // base64로 오거나 서버 경로로 옴
+                            if(!imgPath.startsWith("data:") && !imgPath.startsWith("http")) {
+                                if(!imgPath.startsWith("/")) {
+                                    imgPath = "/" + imgPath;
+                                }
+                            }
+                            gImagePreview.src = imgPath;
+                            gImagePreview.style.display = 'block';
+                            charImageSrc = imgPath;
+                        }
+
+                        document.getElementById('resultDesc').innerHTML = `
+                            <span style="color:#FF9F1C"><b>${cTrait} ${cName}</b></span>(이)가<br>
+                            멋진 주인공으로 변신했어요!<br>
+                            이제 동화책 속으로 떠나요!
+                        `;
+                        showScreen('screen-result');
+                    } else {
+                        throw new Error("그림 생성 실패: " + JSON.stringify(artResult));
+                    }
+                } else {
+                    throw new Error("장난감 찾기 실패: " + extractResult.message);
+                }
+            } catch (error) {
+                console.error(error);
+                loadingMsg.innerHTML = "앗! 마법 지팡이가 고장났어요.<br>조금 뒤에 새로고침 해주세요 🛠️<br>"+error.message;
+            }
+        }
+
+        async function startStoryGen(choiceText = null) {
+            showScreen('screen-loading');
+            const loadingMsg = document.getElementById('loadingMsg');
+            const loadingIcon = document.getElementById('loadingIcon');
+            loadingIcon.innerHTML = "📖";
+            
+            if (choiceText) {
+                loadingMsg.innerHTML = `"${choiceText}"를 골랐군요!<br>다음 이야기를 쓰고 있어요... ✍️`;
+            } else {
+                loadingMsg.innerHTML = "첫 번째 이야기를 쓰는 중이에요... ✍️";
+            }
+
+            try {
+                // 이전 스토리 컨텍스트가 있다면 캐릭터 시트에 합치거나 프롬프트에 넣어야 함
+                const payload = {
+                    character_sheet: globalCharacterSheet,
+                    extra_prompt: choiceText ? `주인공이 다음 행동을 선택했습니다: ${choiceText}` : "",
+                    story_tone: selectedStoryTone === "랜덤" ? null : selectedStoryTone
+                };
+
+                const storyRes = await fetch('/generate-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const storyData = await storyRes.json();
+
+                if (storyData.status === "success") {
+                    renderStory(storyData);
+                } else {
+                    throw new Error(storyData.detail || "스토리 생성 실패");
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("스토리 생성 중 오류가 발생했습니다:\n" + error.message);
+                loadingMsg.innerHTML = "이야기를 짓다가 깜빡 졸았어요.<br>다시 시도해볼까요? 😴<br><small style='color:red;'>" + error.message + "</small>";
+                setTimeout(() => showScreen('screen-result'), 3000); // 뷰어로 돌려보냄
+            }
+        }
+
+        function renderStory(data) {
+            currentStoryTitle = data.title || "마법의 동화책";
+            currentStoryParagraphs = data.story_paragraphs || [];
+            currentTtsScript = data.tts_script || [];
+            
+            // 새 동화가 나오면 읽어주기 중단 및 상태 초기화
+            if (ttsAudioPlayer) {
+                ttsAudioPlayer.pause();
+                ttsAudioPlayer = null;
+            }
+            ttsPlaying = false;
+            const ttsBtn = document.getElementById("ttsButton");
+            if(ttsBtn) ttsBtn.innerText = "🔊 동화 당장 읽기!";
+            
+            document.getElementById('storyTitle').innerText = currentStoryTitle;
+            
+            if(charImageSrc) {
+                const sImg = document.getElementById('storyImage');
+                sImg.src = charImageSrc;
+                sImg.style.display = 'block';
+            }
+
+            const contentDiv = document.getElementById('storyContent');
+            contentDiv.innerHTML = ""; // 기존 글 지우기
+            
+            if (data.story_paragraphs) {
+                data.story_paragraphs.forEach(para => {
+                    const p = document.createElement("div");
+                    p.className = "story-paragraph";
+                    p.innerText = para;
+                    contentDiv.appendChild(p);
+                });
+            }
+
+            const choicesDiv = document.getElementById('storyChoices');
+            const choiceBtnContainer = document.getElementById('choiceButtons');
+            choiceBtnContainer.innerHTML = "";
+
+            if (data.choices && data.choices.length > 0) {
+                choicesDiv.style.display = 'block';
+                data.choices.forEach(choice => {
+                    const btn = document.createElement('button');
+                    btn.className = "btn-primary btn-choice";
+                    btn.style.width = "100%";
+                    btn.innerText = choice.text || "알 수 없는 선택지";
+                    btn.onclick = () => {
+                        startStoryGen(choice.text);
+                    };
+                    choiceBtnContainer.appendChild(btn);
+                });
+            } else {
+                choicesDiv.style.display = 'none';
+                const endBtn = document.createElement('button');
+                endBtn.className = "btn-secondary btn-primary wobble";
+                endBtn.style.marginTop = "20px";
+                endBtn.innerText = "💫 동화가 끝났어요 (처음으로)";
+                endBtn.onclick = () => location.reload();
+                contentDiv.appendChild(endBtn);
+            }
+
+            // 저장 버튼 컨테이너를 항상 최하단에 표시
+            const saveBtnContainer = document.getElementById('saveBtnContainer');
+            if(saveBtnContainer) saveBtnContainer.style.display = 'block';
+
+            showScreen('screen-story');
+        }
+
+        async function saveCurrentStory() {
+            const cName = document.getElementById('charName').value.trim() || globalCharacterSheet?.name || "주인공";
+            const payload = {
+                title: currentStoryTitle,
+                character_name: cName,
+                image_path: charImageSrc,
+                story_paragraphs: currentStoryParagraphs
+            };
+
+            try {
+                const res = await fetch('/save-story', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if(data.status === "success") {
+                    alert("✨ 스토리 저장이 완료되었습니다!\n(서버의 saved_stories 폴더에 저장됨)");
+                } else {
+                    alert("저장에 실패했습니다.");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("저장 중 오류가 발생했습니다.");
+            }
+        }
+
+        // --- 보관함 기능 ---
+        async function loadLibrary() {
+            showScreen('screen-loading');
+            const loadingMsg = document.getElementById('loadingMsg');
+            loadingMsg.innerHTML = "보관함을 열어보는 중... 📚";
+            
+            try {
+                const res = await fetch('/get-stories');
+                const data = await res.json();
+                
+                const listDiv = document.getElementById('libraryList');
+                listDiv.innerHTML = "";
+                
+                if (data.status === "success") {
+                    if (data.stories.length === 0) {
+                        listDiv.innerHTML = `<p style="font-size: 20px; color: #777; background: #fff; padding: 20px; border-radius: 20px;">아직 저장된 동화책이 없어요.<br>모험을 떠나볼까요? 🚀</p>`;
+                    } else {
+                        // 최신순으로 정렬 (간단히 역순)
+                        data.stories.reverse().forEach(story => {
+                            const card = document.createElement('div');
+                            card.className = "cute-card";
+                            card.style.margin = "0";
+                            card.style.cursor = "pointer";
+                            card.style.display = "flex";
+                            card.style.alignItems = "center";
+                            card.style.gap = "15px";
+                            card.style.padding = "15px";
+                            
+                            const img = document.createElement('img');
+                            img.src = story.image_path || "";
+                            img.style.width = "80px";
+                            img.style.height = "80px";
+                            img.style.borderRadius = "15px";
+                            img.style.objectFit = "cover";
+                            img.style.border = "3px solid #FFD166";
+                            
+                            const textDiv = document.createElement('div');
+                            textDiv.style.textAlign = "left";
+                            textDiv.style.flex = "1";
+                            textDiv.innerHTML = `<h3 style="margin: 0 0 5px 0; color: #118AB2; font-size: 20px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${story.title || "제목 없음"}</h3>
+                                               <span style="background: #E0F6FF; padding: 3px 8px; border-radius: 10px; font-size: 14px; color: #0C6B8A;">주인공: ${story.character_name || "???"}</span>`;
+                            
+                            card.appendChild(img);
+                            card.appendChild(textDiv);
+                            
+                            card.onclick = () => renderSavedStory(story);
+                            
+                            listDiv.appendChild(card);
+                        });
+                    }
+                    showScreen('screen-library');
+                } else {
+                    throw new Error("보관함 불러오기 실패");
+                }
+            } catch (err) {
+                console.error(err);
+                alert("보관함을 불러오는 데 실패했어요.");
+                showScreen('screen-home');
+            }
+        }
+
+        function renderSavedStory(story) {
+            currentStoryTitle = story.title || "마법의 동화책";
+            currentStoryParagraphs = story.story_paragraphs || [];
+            charImageSrc = story.image_path;
+            
+            // 저장된 데이터에는 tts_script가 없으므로 문단으로 가짜 스크립트를 만듭니다.
+            currentTtsScript = currentStoryParagraphs.map(p => ({
+                line: p,
+                tone: "따뜻한"
+            }));
+            
+            if (ttsAudioPlayer) {
+                ttsAudioPlayer.pause();
+                ttsAudioPlayer = null;
+            }
+            ttsPlaying = false;
+            const ttsBtn = document.getElementById("ttsButton");
+            if(ttsBtn) ttsBtn.innerText = "🔊 동화 당장 읽기!";
+            
+            document.getElementById('storyTitle').innerText = currentStoryTitle;
+            
+            const sImg = document.getElementById('storyImage');
+            if(charImageSrc) {
+                sImg.src = charImageSrc;
+                sImg.style.display = 'block';
+            } else {
+                sImg.style.display = 'none';
+            }
+
+            const contentDiv = document.getElementById('storyContent');
+            contentDiv.innerHTML = "";
+            
+            if (story.story_paragraphs) {
+                story.story_paragraphs.forEach(para => {
+                    const p = document.createElement("div");
+                    p.className = "story-paragraph";
+                    p.innerText = para;
+                    contentDiv.appendChild(p);
+                });
+            }
+
+            // 보관함에서 본 동화는 이어쓰기가 없으므로 숨김
+            document.getElementById('storyChoices').style.display = 'none';
+            document.getElementById('saveBtnContainer').style.display = 'none';
+
+            // 대신 보관함으로 돌아가기 버튼 추가
+            const backBtn = document.createElement('button');
+            backBtn.className = "btn-secondary btn-primary wobble";
+            backBtn.style.marginTop = "20px";
+            backBtn.innerText = "📚 보관함으로 돌아가기";
+            backBtn.onclick = () => showScreen('screen-library');
+            contentDiv.appendChild(backBtn);
+
+            showScreen('screen-story');
+        }
+    </script>
+</body>
+</html>
