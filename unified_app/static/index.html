@@ -11,9 +11,48 @@
         body { 
             font-family: 'Jua', sans-serif; margin: 0; padding: 0; 
             overflow-x: hidden; overflow-y: auto; 
-            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 100%);
+            background: linear-gradient(180deg, #F0F4F8 0%, #E2E8F0 100%); /* 기본 중립 배경 */
             background-attachment: fixed; 
             color: #444; touch-action: manipulation; text-align: center;
+        }
+
+        /* 배경 밝기 조절 레이어 (70% 밝기 = 30% 어둠) */
+        body::before {
+            content: "";
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.3); /* 30% 검은색 오버레이 */
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        @media (orientation: landscape) {
+            body {
+                background: url('/static/background_image/default_back.jpg') no-repeat center center fixed; 
+                background-size: cover; 
+            }
+            body.theme-boy { 
+                background: url('/static/background_image/theme_boy_back.jpg') no-repeat center center fixed; 
+                background-size: cover; 
+            }
+            body.theme-girl { 
+                background: url('/static/background_image/theme_girl_back.jpg') no-repeat center center fixed; 
+                background-size: cover; 
+            }
+        }
+        @media (orientation: portrait) {
+            body {
+                background: url('/static/background_image/default_back2.jpg') no-repeat center center fixed; 
+                background-size: cover; 
+            }
+            body.theme-boy { 
+                background: url('/static/background_image/theme_boy_back2.jpg') no-repeat center center fixed; 
+                background-size: cover; 
+            }
+            body.theme-girl { 
+                background: url('/static/background_image/theme_girl_back2.jpg') no-repeat center center fixed; 
+                background-size: cover; 
+            }
         }
 
         .screen {
@@ -136,11 +175,58 @@
             background: #06D6A0; color: #fff; border-color: #05A87D;
             box-shadow: 0 4px 0 #048C68;
         }
+        .gender-btn {
+            width: 130px; height: 130px; border-radius: 50%;
+            border: 5px solid #fff; font-size: 50px; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 8px 0 rgba(0,0,0,0.1), 0 10px 20px rgba(0,0,0,0.2);
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 10px; background: #fff;
+        }
+        .gender-btn:active { transform: translateY(8px); box-shadow: 0 0 0 rgba(0,0,0,0.1); }
+        .gender-btn.boy { border-color: #87CEEB; color: #118AB2; padding-top: 10px;}
+        .gender-btn.girl { border-color: #FFB6C1; color: #E75480; padding-top: 10px;}
+        .btn-settings {
+            background: #FFF3D6; border: 3px solid #FFD166; border-radius: 20px; 
+            font-size: 16px; font-weight: bold; padding: 10px 18px; cursor: pointer; 
+            color: #E27D60; font-family: 'Jua', sans-serif; 
+            box-shadow: 0 4px 0 #E2B852; transition: transform 0.1s, box-shadow 0.1s;
+        }
+        .btn-settings:active { transform: translateY(4px); box-shadow: 0 0 0 #E2B852; }
+
+        .gender-title {
+            font-size: 42px; color: #FFD166;
+            text-shadow: 
+                -2px -2px 0 #FF9F1C, 2px -2px 0 #FF9F1C, 
+                -2px 2px 0 #FF9F1C, 2px 2px 0 #FF9F1C, 
+                0 6px 0 #E27D60;
+            margin-bottom: 40px;
+        }
     </style>
 </head>
 <body>
 
-    <div id="screen-home" class="screen active">
+    <!-- 성별 선택 화면 -->
+    <div id="screen-gender" class="screen active" style="justify-content: center;">
+        <div class="cute-card" style="background: rgba(255,255,255,0.85); backdrop-filter: blur(5px); border-color: #FFD166; max-width: 420px; padding: 40px 20px;">
+            <h1 class="gender-title" style="margin-top: 0;">너는 누구니? 😊</h1>
+            <div style="display: flex; justify-content: center; gap: 25px;">
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <button class="gender-btn boy" onclick="selectGender('boy')">👦</button>
+                    <span style="font-size: 24px; color: #118AB2; font-weight: bold; margin-top: 10px;">멋진 왕자님</span>
+                </div>
+                <div style="display: flex; flex-direction: column; align-items: center;">
+                    <button class="gender-btn girl" onclick="selectGender('girl')">👧</button>
+                    <span style="font-size: 24px; color: #E75480; font-weight: bold; margin-top: 10px;">예쁜 공주님</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="screen-home" class="screen">
+        <div style="width: 100%; max-width: 380px; display: flex; justify-content: flex-end; align-items: center; margin-bottom: 20px; margin-top: 10px;">
+            <button class="btn-settings" onclick="showScreen('screen-gender')">⚙️ 성별 다시 고르기</button>
+        </div>
         <h1>✨ Object-<br>Odyssey ✨</h1>
         <p style="font-size: 24px; color: #118AB2; font-weight: bold; margin-top: -10px; margin-bottom: 40px; text-shadow: 1px 1px 0 #fff;">
             사진 한 장으로 뚝딱!<br>우리 아이 맞춤형 동화책
@@ -151,15 +237,22 @@
 
     <!-- 보관함 화면 -->
     <div id="screen-library" class="screen">
-        <h2 style="font-size: 34px; color: #FF9F1C; margin: 20px 0; text-shadow: 2px 2px 0 #fff;">📚 내 보관함</h2>
+        <div style="width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
+            <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
+        </div>
+        <h2 style="font-size: 34px; color: #FF9F1C; margin: 10px 0; text-shadow: 2px 2px 0 #fff;">📚 내 보관함</h2>
         <div id="libraryList" style="width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; align-items: center; overflow-y: auto; padding-bottom: 20px;">
             <!-- 이야기 목록이 여기에 동적으로 추가됩니다 -->
         </div>
-        <button class="btn-secondary" onclick="showScreen('screen-home')" style="margin-top: 20px; font-size: 20px; border-radius: 30px; box-shadow: 0 5px 0 #05A87D; padding: 10px 20px;">⬅️ 홈으로 돌아가기</button>
     </div>
 
     <!-- 목소리 복제 화면 추가 -->
     <div id="screen-voice-clone" class="screen">
+        <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
+            <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
+        </div>
         <div class="cute-card">
             <h2 style="color: #FF9F1C;">👩‍👦 엄마 아빠 목소리로<br>동화를 읽어줄까요?</h2>
             <p style="font-size: 18px; color: #118AB2; margin-top: 10px;">
@@ -182,6 +275,10 @@
     </div>
 
     <div id="screen-input" class="screen">
+        <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
+            <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
+        </div>
         <div class="cute-card">
             <img id="imagePreview" src="" alt="장난감 미리보기">
             
@@ -231,6 +328,10 @@
     </div>
 
     <div id="screen-result" class="screen">
+        <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
+            <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
+        </div>
         <div class="cute-card">
             <img id="generatedCharPreview" src="" alt="생성된 주인공" onclick="openImageModal(this.src)" style="cursor: pointer;" title="클릭해서 크게 보기">
             <button class="btn-secondary" onclick="openImageModal(document.getElementById('generatedCharPreview').src)" style="font-size: 16px; margin-top: -10px; margin-bottom: 10px; background: #118AB2; box-shadow: 0 4px 0 #0d6b8a; border: none; border-radius: 10px; padding: 5px 15px; color: white; cursor: pointer;">🔍 크게 보기</button>
@@ -257,6 +358,10 @@
     </div>
 
     <div id="screen-story" class="screen" style="padding-top: 40px;">
+        <div style="width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: -20px;">
+            <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
+            <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
+        </div>
         <div class="story-container">
             <h2 id="storyTitle" class="story-title">동화 제목</h2>
             <!-- TTS 읽어주기 버튼 -->
@@ -302,6 +407,20 @@
         let ttsPlaying = false;
         let ttsAudioPlayer = null;
         let selectedStoryTone = "랜덤"; // 동화 스타일 선택값
+        let userGender = null;
+
+        function selectGender(gender) {
+            userGender = gender;
+            document.body.className = '';
+            if(gender === 'boy') {
+                document.body.classList.add('theme-boy');
+                document.getElementById('charName').placeholder = "이름 (예: 민수)";
+            } else if(gender === 'girl') {
+                document.body.classList.add('theme-girl');
+                document.getElementById('charName').placeholder = "이름 (예: 지민)";
+            }
+            showScreen('screen-home');
+        }
 
         function selectTone(btn) {
             // 기존 선택 해제
@@ -377,7 +496,37 @@
             }
         }
 
+        let screenHistory = [];
+
+        function goBack() {
+            if (screenHistory.length > 0) {
+                const prevScreen = screenHistory.pop();
+                document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+                window.scrollTo(0, 0);
+                document.getElementById(prevScreen).classList.add('active');
+            } else {
+                showScreen('screen-home');
+            }
+        }
+
         function showScreen(screenId) {
+            const currentActive = document.querySelector('.screen.active');
+            if (currentActive && currentActive.id !== screenId) {
+                // loading 화면은 history에 넣지 않음
+                if (currentActive.id !== 'screen-loading' && currentActive.id !== 'screen-home') {
+                    if (screenHistory[screenHistory.length - 1] !== currentActive.id) {
+                        screenHistory.push(currentActive.id);
+                    }
+                }
+            }
+            if (screenId === 'screen-home') {
+                screenHistory = [];
+            }
+            if (screenId === 'screen-gender') {
+                document.body.className = '';
+                userGender = null;
+                screenHistory = [];
+            }
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             window.scrollTo(0, 0);
             document.getElementById(screenId).classList.add('active');
