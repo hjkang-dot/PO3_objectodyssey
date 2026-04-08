@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from PIL import Image
+from PIL import Image, ImageOps
 
 from app.prompts import reference_image_prompt
 from app.utils import load_pil_image, project_relative_path, save_pil_image
@@ -23,6 +23,9 @@ try:  # pragma: no cover - optional dependency
     from google.genai import types as genai_types  # type: ignore
 except Exception:  # pragma: no cover - optional dependency
     genai_types = None
+
+
+TARGET_IMAGE_SIZE = (768, 1024)
 
 
 @dataclass
@@ -176,6 +179,9 @@ class GeminiService:
             )
 
         image = Image.open(io.BytesIO(generated_bytes)).convert("RGBA")
+        # 생성 모델이 반환하는 원본 크기가 매번 달라도, 서비스 출력은 항상 3:4 세로 비율로 고정한다.
+        # 단순 늘리기 대신 중앙 기준으로 맞춰 잘라내면 프레이밍이 비교적 안정적으로 유지된다.
+        image = ImageOps.fit(image, TARGET_IMAGE_SIZE, method=Image.Resampling.LANCZOS)
         saved = save_pil_image(image, f"{style_label}_{prompt[:24]}")
         return project_relative_path(saved)
 

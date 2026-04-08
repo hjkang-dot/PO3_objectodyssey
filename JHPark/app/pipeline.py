@@ -19,10 +19,10 @@ def build_character_sheet(vision_result: dict[str, Any], parent_input: dict[str,
     return _build_character_sheet(vision_result, parent_input, gemini_service)
 
 
-def build_style_prompts(character_sheet: dict[str, Any]) -> dict[str, Any]:
+def build_style_prompts(character_sheet: dict[str, Any], prompt_options: dict[str, Any] | None = None) -> dict[str, Any]:
     """Build active and soft image prompts for the same character."""
 
-    return _build_style_prompts(character_sheet, gemini_service)
+    return _build_style_prompts(character_sheet, gemini_service, prompt_options)
 
 
 def generate_images(style_prompts: dict[str, Any], reference_image: str) -> dict[str, Any]:
@@ -35,22 +35,53 @@ def generate_story(
     character_sheet: dict[str, Any],
     extra_prompt: str = "",
     story_tone: str | None = None,
+    style_prompts: dict[str, Any] | None = None,
+    reference_image: str | None = None,
 ) -> dict[str, Any]:
     """Generate a short story package from the final character sheet."""
 
-    return _generate_story_package(character_sheet, extra_prompt=extra_prompt, story_tone=story_tone)
+    return _generate_story_package(
+        character_sheet,
+        extra_prompt=extra_prompt,
+        story_tone=story_tone,
+        style_prompts=style_prompts,
+        reference_image=reference_image,
+        gemini_service=gemini_service,
+    )
 
 
-def run_pipeline(vision_result: dict[str, Any], parent_input: dict[str, Any], reference_image: str) -> dict[str, Any]:
+def run_pipeline(
+    vision_result: dict[str, Any],
+    parent_input: dict[str, Any],
+    reference_image: str,
+    prompt_options: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Run the full prototype pipeline and return the final demo payload."""
 
     character_sheet = build_character_sheet(vision_result, parent_input)
-    style_prompts = build_style_prompts(character_sheet)
+    style_prompts = build_style_prompts(character_sheet, prompt_options)
     generated_images = generate_images(style_prompts, reference_image)
-    story = generate_story(character_sheet)
+
+    story_reference_image = generated_images.get("active_style")
+    if character_sheet.get("tone") != "모험적인":
+        story_reference_image = generated_images.get("soft_style") or story_reference_image
+
+    story = None
+    story_error = None
+    try:
+        story = generate_story(
+            character_sheet,
+            style_prompts=style_prompts,
+            reference_image=story_reference_image,
+        )
+    except Exception as exc:
+        # 캐릭터 아트 결과를 먼저 확인할 수 있도록, 스토리 실패는 별도 오류로만 내려준다.
+        story_error = str(exc)
+
     return {
         "character_sheet": character_sheet,
         "style_prompts": style_prompts,
         "generated_images": generated_images,
         "story": story,
+        "story_error": story_error,
     }

@@ -1,6 +1,7 @@
 import base64
 import json
 import os
+import sys
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -10,14 +11,34 @@ import streamlit as st
 from PIL import Image
 
 
-API_URL = "http://127.0.0.1:8000/extract"
 ROOT_DIR = Path(__file__).resolve().parent
+JHPARK_DIR = ROOT_DIR / "JHPark"
+if str(JHPARK_DIR) not in sys.path:
+    sys.path.insert(0, str(JHPARK_DIR))
+
+from app.character import build_prompt_preview, category_options_for_gender, normalize_prompt_options
+
+API_URL = "http://127.0.0.1:8000/extract"
 BACKEND_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
 REFERENCE_IMAGES_URL = f"{BACKEND_BASE_URL}/reference-images"
-CREATE_ART_URL = f"{BACKEND_BASE_URL}/create-art"
+PIPELINE_URL = f"{BACKEND_BASE_URL}/pipeline"
+STORY_URL = f"{BACKEND_BASE_URL}/generate-story"
+
+GENDER_LABELS = {"boy": "Boys' Preference", "girl": "Girls' Preference"}
+BASE_STYLE_LABELS = {"active": "Active", "soft": "Soft"}
+CATEGORY_LABELS = {
+    "default": "None / Default",
+    "adventure": "Adventure",
+    "cozy": "Cozy",
+    "magic": "Magic",
+    "bright": "Bright",
+    "fantasy": "Fantasy",
+}
+STORY_TONE_OPTIONS = ["랜덤", "따뜻한", "모험적인", "교훈적인"]
+TONE_TO_INDEX = {label: idx for idx, label in enumerate(STORY_TONE_OPTIONS[1:])}
 
 
-def request_nukki_api(image_file):
+def request_nukki_api(image_file: Any) -> dict[str, Any]:
     try:
         files = {"file": (image_file.name, image_file.getvalue(), image_file.type)}
         response = requests.post(API_URL, files=files, timeout=60)
@@ -35,7 +56,7 @@ def load_reference_images() -> list[str]:
         payload = response.json()
         return list(payload.get("reference_images", []))
     except Exception as exc:
-        st.error(f"기준 이미지 목록을 불러오지 못했습니다: {exc}")
+        st.error(f"Failed to load reference images: {exc}")
         return []
 
 
@@ -45,13 +66,13 @@ def get_reference_preview_path(filename: str) -> Path:
 
 def render_generated_image(value: str, caption: str) -> None:
     if not value:
-        st.warning(f"{caption} 이미지가 없습니다.")
+        st.info(f"{caption} image is empty.")
         return
 
     if value.startswith("data:image/"):
         _, encoded = value.split(",", 1)
         image_bytes = base64.b64decode(encoded)
-        st.image(Image.open(BytesIO(image_bytes)), caption=caption, use_container_width=True)
+        st.image(Image.open(BytesIO(image_bytes)), caption=caption, width="stretch")
         return
 
     image_path = Path(value)
@@ -59,44 +80,172 @@ def render_generated_image(value: str, caption: str) -> None:
         image_path = ROOT_DIR / value
 
     if image_path.exists():
-        st.image(str(image_path), caption=caption, use_container_width=True)
+        st.image(str(image_path), caption=caption, width="stretch")
         return
 
     if value.startswith("http://") or value.startswith("https://"):
-        st.image(value, caption=caption, use_container_width=True)
+        st.image(value, caption=caption, width="stretch")
         return
 
     st.code(value)
 
 
-def call_create_art(payload: dict[str, Any]) -> dict[str, Any]:
-    response = requests.post(CREATE_ART_URL, json=payload, timeout=600)
+def call_pipeline(payload: dict[str, Any]) -> dict[str, Any]:
+    response = requests.post(PIPELINE_URL, json=payload, timeout=1200)
     response.raise_for_status()
     return response.json()
 
 
-default_story_character_sheet = {
-    "original_object": "곰인형",
-    "name": "코코",
-    "job": "우주 탐험가",
-    "personality": "용감하고 다정함",
-    "goal": "새로운 별을 찾고 싶어함",
-    "core_visual_traits": ["작은 별가방", "반짝이는 우주복"],
-    "tone": "모험적인",
-}
+def call_story_generation(payload: dict[str, Any]) -> dict[str, Any]:
+    response = requests.post(STORY_URL, json=payload, timeout=1200)
+    response.raise_for_status()
+    return response.json()
 
-if "story_character_sheet_json" not in st.session_state:
-    st.session_state.story_character_sheet_json = json.dumps(
-        default_story_character_sheet, ensure_ascii=False, indent=2
-    )
 
-st.title("Object Odyssey Demo")
+def build_preview_character_sheet(
+    original_object: str,
+    name: str,
+    job: str,
+    traits_input: str,
+    personality: str,
+    goal: str,
+    tone: str,
+) -> dict[str, Any]:
+    traits = [item.strip() for item in traits_input.split(",") if item.strip()]
+    fallback_traits = traits or [
+        f"based on the appearance of {original_object or 'reference object'}",
+        f"wears visual hints of the job: {job or 'storybook hero'}",
+        "keeps a toy-like silhouette with readable facial features",
+    ]
+    return {
+        "original_object": original_object.strip() or "reference object",
+        "name": name.strip() or "Coco",
+        "job": job.strip() or "storybook hero",
+        "personality": personality.strip() or "warm and brave",
+        "goal": goal.strip() or "wants to discover something new",
+        "core_visual_traits": fallback_traits[:5],
+        "tone": tone or "따뜻한",
+    }
+
+
+def build_prompt_summary(prompt_options: dict[str, str]) -> dict[str, str]:
+    return {
+        "target_audience": GENDER_LABELS[prompt_options["gender"]],
+        "base_style": BASE_STYLE_LABELS[prompt_options["base_style"]],
+        "category": CATEGORY_LABELS[prompt_options["category"]],
+    }
+
+
+def get_story_default_character_sheet() -> dict[str, Any]:
+    return {
+        "original_object": "",
+        "name": "코코",
+        "job": "탐험가",
+        "personality": "따뜻하고 공감이 많음",
+        "goal": "새로운 세계를 발견하고 싶어함",
+        "core_visual_traits": [
+            "round toy body",
+            "bright window eyes",
+            "friendly hero silhouette",
+            "anime style",
+        ],
+        "tone": "따뜻한",
+    }
+
+
+def reset_defaults_if_source_changed(default_story_character_sheet: dict[str, Any]) -> None:
+    default_json = json.dumps(default_story_character_sheet, ensure_ascii=False, indent=2)
+    if st.session_state.get("_default_story_character_sheet_json") != default_json:
+        st.session_state.story_character_sheet_json = default_json
+        st.session_state._default_story_character_sheet_json = default_json
+
+
+def render_story_book(story_package: dict[str, Any]) -> None:
+    pages = story_package.get("story_pages", [])
+    if not pages:
+        st.warning("표시할 동화 페이지가 없습니다.")
+        return
+
+    current_page = int(st.session_state.get("current_story_page", 0))
+    current_page = max(0, min(current_page, len(pages) - 1))
+    st.session_state.current_story_page = current_page
+    page = pages[current_page]
+
+    st.subheader(story_package.get("title", ""))
+    st.caption(f"{current_page + 1} / {len(pages)} 페이지")
+
+    page_left, page_right = st.columns([1.05, 0.95], gap="large")
+    with page_left:
+        render_generated_image(page.get("image_path") or "", f"Page {page.get('page_number', current_page + 1)}")
+    with page_right:
+        for sentence in page.get("sentences", []):
+            st.write(sentence)
+        with st.expander("이 페이지 이미지 프롬프트 보기", expanded=False):
+            st.code(page.get("image_prompt", ""), language="text")
+
+    nav_left, nav_mid, nav_right = st.columns([1, 1, 1])
+    with nav_left:
+        if st.button("이전 페이지", disabled=current_page == 0, width="stretch"):
+            st.session_state.current_story_page = max(0, current_page - 1)
+            st.rerun()
+    with nav_mid:
+        st.markdown(
+            "<div style='text-align:center; padding-top:0.5rem;'>책을 넘기듯 페이지를 이동하세요.</div>",
+            unsafe_allow_html=True,
+        )
+    with nav_right:
+        if st.button("다음 페이지", disabled=current_page == len(pages) - 1, width="stretch"):
+            st.session_state.current_story_page = min(len(pages) - 1, current_page + 1)
+            st.rerun()
+
+    if current_page == len(pages) - 1:
+        cover_button_label = "표지 숨기기" if st.session_state.get("show_story_cover") else "표지 출력"
+        if st.button(cover_button_label, key="toggle_story_cover", width="stretch"):
+            st.session_state.show_story_cover = not st.session_state.get("show_story_cover", False)
+            st.rerun()
+
+    if st.session_state.get("show_story_cover"):
+        st.subheader("동화책 표지")
+        render_generated_image(story_package.get("cover_image_path") or "", "Story Cover")
+        with st.expander("표지 이미지 프롬프트 보기", expanded=False):
+            st.code(story_package.get("cover_prompt", ""), language="text")
+
+    st.write("마지막 선택")
+    choices = story_package.get("choices", [])
+    if choices:
+        choice_columns = st.columns(len(choices))
+        for idx, choice in enumerate(choices):
+            with choice_columns[idx]:
+                if st.button(choice.get("text", ""), key=f"story_choice_{choice.get('id', idx)}", width="stretch"):
+                    st.session_state.selected_story_choice = choice
+        selected_choice = st.session_state.get("selected_story_choice")
+        if selected_choice:
+            st.info(f"선택한 이야기: {selected_choice['text']} ({selected_choice['id']})")
+
+
+st.set_page_config(page_title="Object Odyssey Test App", page_icon="OO", layout="wide")
+
+default_story_character_sheet = get_story_default_character_sheet()
+reset_defaults_if_source_changed(default_story_character_sheet)
+
+if "current_story_page" not in st.session_state:
+    st.session_state.current_story_page = 0
+if "show_story_cover" not in st.session_state:
+    st.session_state.show_story_cover = False
+
+default_original_object = str(default_story_character_sheet.get("original_object") or "")
+default_name = str(default_story_character_sheet.get("name") or "")
+default_job = str(default_story_character_sheet.get("job") or "")
+default_traits_input = ", ".join(default_story_character_sheet.get("core_visual_traits") or [])
+default_personality = str(default_story_character_sheet.get("personality") or "")
+default_goal = str(default_story_character_sheet.get("goal") or "")
+default_tone = str(default_story_character_sheet.get("tone") or STORY_TONE_OPTIONS[1])
+
+st.title("Object Odyssey Test App")
 
 uploaded_file = st.file_uploader("Upload an image", type=["jpg", "png"])
-
 if uploaded_file:
     st.image(uploaded_file, caption="Uploaded image", width=300)
-
     if st.button("Run Extraction"):
         with st.spinner("Processing the uploaded image..."):
             result = request_nukki_api(uploaded_file)
@@ -108,37 +257,55 @@ if uploaded_file:
         else:
             st.error(result["message"])
 
-
 st.divider()
-st.title("Character Art Demo")
-st.caption("이 페이지는 캐릭터/이미지 생성 전용입니다. 동화는 별도 페이지에서 생성합니다.")
+st.title("Prompt-Driven Character Art Test")
+st.caption("Generate a character first, then generate a 5-page illustrated storybook below.")
 
-left_col, right_col = st.columns([1.1, 0.9], gap="large")
+reference_images = load_reference_images()
+left_col, right_col = st.columns([1.05, 0.95], gap="large")
 
 with left_col:
-    st.subheader("Vision Input")
-    objects_text = st.text_input(
-        "Detected objects",
-        value="곰인형",
-        help="Comma-separated list of detected objects.",
+    st.subheader("Prompt Controls")
+
+    gender = st.selectbox(
+        "Target Audience",
+        options=["girl", "boy"],
+        format_func=lambda value: GENDER_LABELS[value],
+        index=0,
+        help="This does not force the character to be male or female. It selects the presentation style that may appeal more to girls or boys.",
+    )
+    base_style = st.selectbox(
+        "Base Prompt",
+        options=["active", "soft"],
+        format_func=lambda value: BASE_STYLE_LABELS[value],
+        index=0,
+    )
+    category = st.selectbox(
+        "Category",
+        options=category_options_for_gender(gender),
+        format_func=lambda value: CATEGORY_LABELS[value],
+        index=0,
     )
 
-    st.subheader("Parent Input")
-    art_name = st.text_input("Name", value="코코")
-    art_job = st.text_input("Job", value="우주 탐험가")
-    art_personality = st.text_input("Personality", value="용감하고 다정함")
-    art_goal = st.text_input("Goal", value="새로운 별을 찾고 싶어함")
-    art_tone = st.selectbox("Base tone", ["따뜻한", "모험적인", "교훈적인"], index=1)
-    art_extra = st.text_area(
-        "추가 프롬프트",
-        value="작은 별가방과 반짝이는 우주복을 입고 있어요.",
-        height=100,
-        help="기존 내부 프롬프트는 숨겨져 있고, 여기 입력한 내용만 추가 반영됩니다.",
+    st.subheader("Character Inputs")
+    original_object = st.text_input("Original Object", value=default_original_object)
+    art_name = st.text_input("Name", value=default_name)
+    art_job = st.text_input("Job", value=default_job)
+    traits_input = st.text_area(
+        "Traits",
+        value=default_traits_input,
+        height=90,
+        help="Use comma-separated visual traits.",
     )
 
-with right_col:
+    with st.expander("More Character Fields", expanded=False):
+        art_personality = st.text_input("Personality", value=default_personality)
+        art_goal = st.text_input("Goal", value=default_goal)
+        tone_options = STORY_TONE_OPTIONS[1:]
+        tone_index = TONE_TO_INDEX.get(default_tone, 0)
+        art_tone = st.selectbox("Story Tone", tone_options, index=tone_index)
+
     st.subheader("Reference Image")
-    reference_images = load_reference_images()
     if not reference_images:
         st.error("No usable jpg, jpeg, or png images were found in the root nukki folder.")
         selected_reference = ""
@@ -146,65 +313,161 @@ with right_col:
         selected_reference = st.selectbox("Reference image", reference_images, index=0)
         preview_path = get_reference_preview_path(selected_reference)
         if preview_path.exists():
-            st.image(str(preview_path), caption=f"Reference image: {selected_reference}", use_container_width=True)
+            st.image(str(preview_path), caption=f"Reference image: {selected_reference}", width="stretch")
 
-run_create_art = st.button("Generate Character Art", type="primary", use_container_width=True)
+    prompt_options = normalize_prompt_options(
+        {
+            "gender": gender,
+            "base_style": base_style,
+            "category": category,
+        }
+    )
+    preview_character_sheet = build_preview_character_sheet(
+        original_object=original_object,
+        name=art_name,
+        job=art_job,
+        traits_input=traits_input,
+        personality=art_personality,
+        goal=art_goal,
+        tone=art_tone,
+    )
+    prompt_preview = build_prompt_preview(preview_character_sheet, prompt_options)
+    summary = build_prompt_summary(prompt_options)
+
+with right_col:
+    st.subheader("Applied Template")
+    st.info(prompt_preview["selected_template"])
+
+    st.subheader("Selection Summary")
+    st.json(summary)
+
+    st.subheader("Final Prompt Preview")
+    st.code(prompt_preview["selected_prompt"], language="text")
+
+    st.subheader("Preview Character Sheet")
+    st.json(preview_character_sheet)
+
+run_create_art = st.button("Generate Character Art", type="primary", width="stretch")
 
 if run_create_art:
-    objects = [item.strip() for item in objects_text.split(",") if item.strip()]
     if not selected_reference:
         st.error("Select a reference image first.")
     else:
         payload = {
-            "vision_result": {"objects": objects},
+            "vision_result": {"objects": [original_object]},
             "parent_input": {
                 "name": art_name,
                 "job": art_job,
                 "personality": art_personality,
                 "goal": art_goal,
-                "extra_description": art_extra,
+                "extra_description": traits_input,
+                "original_object_hint": original_object,
+                "traits_input": traits_input,
                 "tone": art_tone,
             },
             "reference_image": selected_reference,
+            "prompt_options": prompt_options,
         }
 
         try:
-            with st.spinner("Generating character art..."):
-                result = call_create_art(payload)
+            with st.spinner("Generating character art and starter story package..."):
+                result = call_pipeline(payload)
 
             st.success("Character art generation completed.")
+
+            style_prompts = result.get("style_prompts", {})
+            generated_images = result.get("generated_images", {})
+            st.session_state.story_character_sheet_json = json.dumps(
+                result.get("character_sheet", {}),
+                ensure_ascii=False,
+                indent=2,
+            )
+            st.session_state.latest_style_prompts = style_prompts
+            st.session_state.latest_generated_images = generated_images
+            st.session_state.latest_story_reference_image = (
+                generated_images.get("active_style")
+                if art_tone == "모험적인"
+                else generated_images.get("soft_style") or generated_images.get("active_style")
+            )
+            st.session_state.latest_story_package = result.get("story", {})
+            st.session_state.current_story_page = 0
+            st.session_state.show_story_cover = False
+
+            if result.get("story_error"):
+                st.warning(f"Starter story generation skipped: {result['story_error']}")
 
             left_result, right_result = st.columns([1, 1], gap="large")
             with left_result:
                 st.subheader("Character Sheet")
                 st.json(result.get("character_sheet", {}))
                 st.subheader("Style Prompts")
-                style_prompts = result.get("style_prompts", {})
                 st.write("Active Style")
-                st.code(style_prompts.get("active_style", ""))
+                st.code(style_prompts.get("active_style", ""), language="text")
                 st.write("Soft Style")
-                st.code(style_prompts.get("soft_style", ""))
+                st.code(style_prompts.get("soft_style", ""), language="text")
 
             with right_result:
                 st.subheader("Generated Images")
-                generated_images = result.get("generated_images", {})
                 render_generated_image(generated_images.get("active_style", ""), "Active Style")
                 render_generated_image(generated_images.get("soft_style", ""), "Soft Style")
 
-            if result.get("character_sheet"):
-                st.session_state.story_character_sheet_json = json.dumps(
-                    result["character_sheet"], ensure_ascii=False, indent=2
-                )
-            if result.get("story"):
-                st.session_state.latest_story_package = result["story"]
-
-            st.info("Story Generation 페이지에서 이어서 동화를 생성할 수 있습니다.")
         except requests.HTTPError as exc:
             detail = ""
             try:
                 detail = exc.response.json().get("detail", "")
             except Exception:
                 detail = exc.response.text if exc.response is not None else str(exc)
-            st.error(f"백엔드 오류: {detail or exc}")
+            st.error(f"Backend error: {detail or exc}")
         except Exception as exc:
-            st.error(f"실행 중 오류가 발생했습니다: {exc}")
+            st.error(f"Execution failed: {exc}")
+
+st.divider()
+st.title("Illustrated Storybook Test")
+
+story_extra_prompt = st.text_area(
+    "Story Extra Prompt",
+    value=(
+        "15문장으로 구성하고, 5페이지가 인과관계로 이어지게 해줘. "
+        "기승전결이 분명하고, 3페이지에서 갈등이 커지고, 4페이지에서 해결의 실마리가 나오고, "
+        "5페이지는 감정적으로 만족스러운 결말이 되게 해줘. "
+        "의성어와 의태어를 자연스럽게 넣고, 아이가 다음 장면을 궁금해하도록 만들어줘."
+    ),
+    height=110,
+)
+story_tone_option = st.selectbox("Story Style", STORY_TONE_OPTIONS, index=0)
+
+run_story = st.button("Generate 5-Page Storybook", type="secondary", width="stretch")
+
+if run_story:
+    try:
+        character_sheet = json.loads(st.session_state.story_character_sheet_json)
+    except Exception as exc:
+        st.error(f"character_sheet JSON 오류: {exc}")
+    else:
+        try:
+            with st.spinner("Generating storybook pages and page images..."):
+                story_package = call_story_generation(
+                    {
+                        "character_sheet": character_sheet,
+                        "extra_prompt": story_extra_prompt,
+                        "story_tone": None if story_tone_option == "랜덤" else story_tone_option,
+                        "style_prompts": st.session_state.get("latest_style_prompts"),
+                        "reference_image": st.session_state.get("latest_story_reference_image"),
+                    }
+                )
+            st.session_state.latest_story_package = story_package
+            st.session_state.current_story_page = 0
+            st.session_state.show_story_cover = False
+            st.success("5-page storybook generated.")
+        except requests.HTTPError as exc:
+            detail = ""
+            try:
+                detail = exc.response.json().get("detail", "")
+            except Exception:
+                detail = exc.response.text if exc.response is not None else str(exc)
+            st.error(f"Backend error: {detail or exc}")
+        except Exception as exc:
+            st.error(f"Execution failed: {exc}")
+
+if st.session_state.get("latest_story_package"):
+    render_story_book(st.session_state["latest_story_package"])

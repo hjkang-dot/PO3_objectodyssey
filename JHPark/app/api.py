@@ -62,7 +62,10 @@ def post_style_prompts(payload: StylePromptsRequest) -> dict:
     """Generate two style-specific prompts."""
 
     try:
-        return build_style_prompts(payload.character_sheet.model_dump())
+        return build_style_prompts(
+            payload.character_sheet.model_dump(),
+            payload.prompt_options.model_dump() if payload.prompt_options else None,
+        )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -86,6 +89,8 @@ def post_generate_story(payload: StoryRequest) -> dict:
             payload.character_sheet.model_dump(),
             extra_prompt=payload.extra_prompt,
             story_tone=payload.story_tone,
+            style_prompts=payload.style_prompts.model_dump() if payload.style_prompts else None,
+            reference_image=payload.reference_image,
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -100,6 +105,7 @@ def post_pipeline(payload: PipelineRequest) -> dict:
             payload.vision_result.model_dump(),
             payload.parent_input.model_dump(),
             payload.reference_image,
+            payload.prompt_options.model_dump() if payload.prompt_options else None,
         )
     except Exception as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

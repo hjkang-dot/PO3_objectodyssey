@@ -1,4 +1,4 @@
-"""메인 캐릭터/이미지 생성 페이지."""
+"""Main Streamlit page for prompt testing and image generation."""
 
 from __future__ import annotations
 
@@ -21,17 +21,29 @@ if str(ROOT_DIR) not in sys.path:
 
 load_dotenv(ROOT_DIR / ".env")
 
+from app.character import build_prompt_preview, category_options_for_gender, normalize_prompt_options
+
 FASTAPI_BASE_URL = os.getenv("FASTAPI_BASE_URL", "http://127.0.0.1:8000")
+GENDER_LABELS = {"boy": "Boys' Preference", "girl": "Girls' Preference"}
+BASE_STYLE_LABELS = {"active": "Active", "soft": "Soft"}
+CATEGORY_LABELS = {
+    "default": "None / Default",
+    "adventure": "Adventure",
+    "cozy": "Cozy",
+    "magic": "Magic",
+    "bright": "Bright",
+    "fantasy": "Fantasy",
+}
 
 
 def _reference_image_path(filename: str) -> Path:
-    """nukki 내부의 기준 이미지 경로를 만든다."""
+    """Build the preview path for a selectable reference image."""
 
     return ROOT_DIR / "nukki" / filename
 
 
 def _load_reference_images() -> list[str]:
-    """백엔드에서 기준 이미지 목록을 불러온다."""
+    """Load available reference image filenames from the backend."""
 
     try:
         response = requests.get(f"{FASTAPI_BASE_URL}/reference-images", timeout=20)
@@ -39,21 +51,21 @@ def _load_reference_images() -> list[str]:
         data = response.json()
         return list(data.get("reference_images", []))
     except Exception as exc:
-        st.error(f"기준 이미지 목록을 불러오지 못했습니다: {exc}")
+        st.error(f"Failed to load reference images: {exc}")
         return []
 
 
 def _display_image_payload(value: str, caption: str) -> None:
-    """경로 또는 base64 형태의 이미지를 화면에 보여준다."""
+    """Render a generated image from a path, URL, or base64 payload."""
 
     if not value:
-        st.warning(f"{caption} 이미지가 비어 있습니다.")
+        st.warning(f"{caption} image is empty.")
         return
 
     if value.startswith("data:image/"):
         _, encoded = value.split(",", 1)
         image_bytes = base64.b64decode(encoded)
-        st.image(Image.open(BytesIO(image_bytes)), caption=caption, use_container_width=True)
+        st.image(Image.open(BytesIO(image_bytes)), caption=caption, width="stretch")
         return
 
     image_path = Path(value)
@@ -61,127 +73,237 @@ def _display_image_payload(value: str, caption: str) -> None:
         image_path = ROOT_DIR / value
 
     if image_path.exists():
-        st.image(str(image_path), caption=caption, use_container_width=True)
+        st.image(str(image_path), caption=caption, width="stretch")
         return
 
     if value.startswith("http://") or value.startswith("https://"):
-        st.image(value, caption=caption, use_container_width=True)
+        st.image(value, caption=caption, width="stretch")
         return
 
     st.code(value)
 
 
 def _call_pipeline(payload: dict[str, Any]) -> dict[str, Any]:
-    """캐릭터, 이미지, 동화를 함께 생성하는 파이프라인을 호출한다."""
+    """Call the backend end-to-end pipeline."""
 
     response = requests.post(f"{FASTAPI_BASE_URL}/pipeline", json=payload, timeout=600)
     response.raise_for_status()
     return response.json()
 
 
+def _build_preview_character_sheet(
+    original_object: str,
+    name: str,
+    job: str,
+    traits_input: str,
+    personality: str,
+    goal: str,
+    tone: str,
+) -> dict[str, Any]:
+    """Build a local preview-only character sheet from the form values."""
+
+    traits = [item.strip() for item in traits_input.split(",") if item.strip()]
+    fallback_traits = traits or [
+        f"based on the appearance of {original_object}",
+        f"wears visual hints of the job: {job}",
+        "keeps a toy-like silhouette with readable facial features",
+    ]
+    return {
+        "original_object": original_object.strip() or "reference object",
+        "name": name.strip() or "Coco",
+        "job": job.strip() or "storybook hero",
+        "personality": personality.strip() or "warm and brave",
+        "goal": goal.strip() or "wants to discover something new",
+        "core_visual_traits": fallback_traits[:5],
+        "tone": tone,
+    }
+
+
+def _build_prompt_summary(prompt_options: dict[str, str]) -> dict[str, str]:
+    """Create a small display-friendly summary for the selected prompt controls."""
+
+    return {
+        "target_audience": GENDER_LABELS[prompt_options["gender"]],
+        "base_style": BASE_STYLE_LABELS[prompt_options["base_style"]],
+        "category": CATEGORY_LABELS[prompt_options["category"]],
+    }
+
+
 default_character_sheet = {
-    "original_object": "곰인형",
+    "original_object": "",
     "name": "코코",
-    "job": "우주 탐험가",
-    "personality": "용감하고 다정함",
-    "goal": "새로운 별을 찾고 싶어함",
-    "core_visual_traits": ["작은 별가방", "반짝이는 우주복"],
-    "tone": "모험적인",
+    "job": "탐험가",
+    "personality": "다정하고 용감한",
+    "goal": "새로운 유적을 발견하고 싶어함",
+    "core_visual_traits": ["round toy body", "bright window eyes", "friendly hero silhouette", "anime style"],
+    "tone": "warm",
 }
 
 if "story_character_sheet_json" not in st.session_state:
     st.session_state.story_character_sheet_json = json.dumps(default_character_sheet, ensure_ascii=False, indent=2)
 
-st.set_page_config(page_title="PO3 Character Studio", page_icon="OO", layout="wide")
+st.set_page_config(page_title="PO3 Prompt Studio", page_icon="OO", layout="wide")
 
-st.title("캐릭터/이미지 생성")
-st.caption("이 페이지에서는 캐릭터 시트와 이미지를 생성합니다. 동화 생성은 별도 페이지에서 진행합니다.")
+st.title("PO3 Prompt Studio")
+st.caption("Choose a target audience preference, base prompt, and category, preview the final prompt, and optionally run image generation.")
 
-col_left, col_right = st.columns([1.1, 0.9], gap="large")
+reference_images = _load_reference_images()
+left_col, right_col = st.columns([1.05, 0.95], gap="large")
 
-with col_left:
-    st.subheader("1. 비전 입력")
-    objects_text = st.text_input("감지 객체", value="곰인형", help="쉼표로 여러 객체를 입력할 수 있습니다.")
+with left_col:
+    st.subheader("Prompt Controls")
 
-    st.subheader("2. 부모 입력")
-    name = st.text_input("이름", value="코코")
-    job = st.text_input("직업", value="우주 탐험가")
-    personality = st.text_input("성격", value="용감하고 다정함")
-    goal = st.text_input("목표", value="새로운 별을 찾고 싶어함")
-    tone = st.selectbox("기본 톤", ["따뜻한", "모험적인", "교훈적인"], index=1)
-    extra_description = st.text_area(
-        "추가 프롬프트",
-        value="작은 별가방과 반짝이는 우주복을 입고 있어요.",
-        height=100,
-        help="기존 내부 프롬프트는 화면에 보이지 않으며, 여기에 적은 내용만 추가 반영됩니다.",
+    gender = st.selectbox(
+        "Target Audience",
+        options=["girl", "boy"],
+        format_func=lambda value: GENDER_LABELS[value],
+        index=0,
+        help="This does not force the character to be male or female. It selects the visual/story presentation style that may appeal more to girls or boys.",
+    )
+    base_style = st.selectbox(
+        "Base Prompt",
+        options=["active", "soft"],
+        format_func=lambda value: BASE_STYLE_LABELS[value],
+        index=0,
     )
 
-with col_right:
-    st.subheader("3. 기준 이미지")
-    reference_images = _load_reference_images()
+    category_options = category_options_for_gender(gender)
+    category = st.selectbox(
+        "Category",
+        options=category_options,
+        format_func=lambda value: CATEGORY_LABELS[value],
+        index=0,
+    )
+
+    st.subheader("Character Inputs")
+    original_object = st.text_input("Original Object", value="toy bus")
+    name = st.text_input("Name", value="Coco")
+    job = st.text_input("Job", value="space explorer")
+    traits_input = st.text_area(
+        "Traits",
+        value="round toy-bus body, bright window eyes, friendly hero silhouette",
+        height=90,
+        help="Use comma-separated visual traits.",
+    )
+
+    with st.expander("More Character Fields", expanded=False):
+        personality = st.text_input("Personality", value="warm and brave")
+        goal = st.text_input("Goal", value="wants to discover a new star")
+        tone = st.text_input("Story Tone", value="warm")
+
+    st.subheader("Reference Image")
     if not reference_images:
-        st.error("nukki 폴더에서 사용할 수 있는 이미지가 없습니다.")
         selected_reference = ""
+        st.error("No usable reference images were found in the nukki folder.")
     else:
-        selected_reference = st.selectbox("기준 이미지 선택", reference_images, index=0)
+        selected_reference = st.selectbox("Reference Image", reference_images, index=0)
         preview_path = _reference_image_path(selected_reference)
         if preview_path.exists():
-            st.image(str(preview_path), caption=f"기준 이미지: {selected_reference}", use_container_width=True)
+            st.image(str(preview_path), caption=f"Reference image: {selected_reference}", width="stretch")
 
-run_clicked = st.button("캐릭터/이미지 생성", type="primary", use_container_width=True)
+    prompt_options = normalize_prompt_options(
+        {
+            "gender": gender,
+            "base_style": base_style,
+            "category": category,
+        }
+    )
+    preview_character_sheet = _build_preview_character_sheet(
+        original_object=original_object,
+        name=name,
+        job=job,
+        traits_input=traits_input,
+        personality=personality,
+        goal=goal,
+        tone=tone,
+    )
+    prompt_preview = build_prompt_preview(preview_character_sheet, prompt_options)
+    summary = _build_prompt_summary(prompt_options)
+
+with right_col:
+    st.subheader("Applied Template")
+    st.info(prompt_preview["selected_template"])
+
+    st.subheader("Selection Summary")
+    st.json(summary)
+
+    st.subheader("Final Prompt Preview")
+    st.code(prompt_preview["selected_prompt"], language="text")
+
+    st.subheader("Preview Character Sheet")
+    st.json(preview_character_sheet)
+
+st.divider()
+st.subheader("Run Image Test")
+
+run_clicked = st.button("Generate Character Art", type="primary", width="stretch")
 
 if run_clicked:
-    objects = [item.strip() for item in objects_text.split(",") if item.strip()]
     if not selected_reference:
-        st.error("기준 이미지를 먼저 선택해 주세요.")
+        st.error("Select a reference image first.")
     else:
         payload = {
-            "vision_result": {"objects": objects},
+            "vision_result": {"objects": [original_object]},
             "parent_input": {
                 "name": name,
                 "job": job,
                 "personality": personality,
                 "goal": goal,
-                "extra_description": extra_description,
+                "extra_description": traits_input,
+                "original_object_hint": original_object,
+                "traits_input": traits_input,
                 "tone": tone,
             },
             "reference_image": selected_reference,
+            "prompt_options": prompt_options,
         }
 
         try:
-            with st.spinner("캐릭터와 이미지를 생성하는 중입니다..."):
+            with st.spinner("Generating character art with the selected prompt template..."):
                 result = _call_pipeline(payload)
 
-            result["character_sheet"]["tone"] = tone
             st.session_state.story_character_sheet_json = json.dumps(
                 result["character_sheet"], ensure_ascii=False, indent=2
             )
+            st.session_state.latest_style_prompts = result.get("style_prompts", {})
+            st.session_state.latest_generated_images = result.get("generated_images", {})
+            st.session_state.latest_prompt_options = prompt_options
+            st.session_state.latest_story_reference_image = (
+                result.get("generated_images", {}).get("active_style")
+                if tone == "모험적인"
+                else result.get("generated_images", {}).get("soft_style")
+                or result.get("generated_images", {}).get("active_style")
+            )
             st.session_state.latest_story_package = result.get("story", {})
+            st.session_state.current_story_page = 0
 
-            st.success("캐릭터와 이미지 생성이 완료되었습니다.")
+            st.success("Character art generation completed.")
 
-            left, right = st.columns([1, 1], gap="large")
-            with left:
-                st.subheader("캐릭터 시트")
+            result_left, result_right = st.columns([1, 1], gap="large")
+            with result_left:
+                st.subheader("Returned Character Sheet")
                 st.json(result["character_sheet"])
-                st.subheader("스타일 프롬프트")
-                st.write("활동형")
-                st.code(result["style_prompts"]["active_style"])
-                st.write("부드러운형")
-                st.code(result["style_prompts"]["soft_style"])
+                st.subheader("Returned Style Prompts")
+                st.write("Active Style")
+                st.code(result["style_prompts"]["active_style"], language="text")
+                st.write("Soft Style")
+                st.code(result["style_prompts"]["soft_style"], language="text")
 
-            with right:
-                st.subheader("생성 이미지")
-                _display_image_payload(result["generated_images"]["active_style"], "활동형")
-                _display_image_payload(result["generated_images"]["soft_style"], "부드러운형")
+            with result_right:
+                st.subheader("Generated Images")
+                _display_image_payload(result["generated_images"]["active_style"], "Active Style")
+                _display_image_payload(result["generated_images"]["soft_style"], "Soft Style")
 
-            st.info("동화 생성은 왼쪽 사이드바의 Story Generation 페이지에서 이어서 진행할 수 있습니다.")
+            st.info(
+                "The selected template above controls which prompt family was emphasized. "
+                "The backend still returns both active_style and soft_style outputs for compatibility."
+            )
         except requests.HTTPError as exc:
             detail = ""
             try:
                 detail = exc.response.json().get("detail", "")
             except Exception:
                 detail = exc.response.text if exc.response is not None else str(exc)
-            st.error(f"백엔드 오류: {detail or exc}")
+            st.error(f"Backend error: {detail or exc}")
         except Exception as exc:
-            st.error(f"실행 중 오류가 발생했습니다: {exc}")
+            st.error(f"Execution failed: {exc}")
