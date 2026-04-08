@@ -120,61 +120,60 @@ def unload_model_base():
 
 # 4. 엔드포인트 -------------------------------------
 
+
+def _generate_single_audio_internal(text: str, voice_id: str):
+    """내부용: 단일 텍스트 TTS 생성 로직 (모델 자동 로드/언로드 미포함)"""
+    ref_path = AUDIO_BASE_PATH / f"{voice_id}.wav"
+    if not os.path.exists(ref_path):
+        # 기본 여성 목소리로 폴백
+        ref_path = AUDIO_BASE_PATH / "default_women.wav"
+        if not os.path.exists(ref_path):
+            raise FileNotFoundError(f"Voice sample {voice_id} or default_women not found.")
+
+    with torch.no_grad():
+        wavs, sr = model_base.generate_voice_clone(
+            text=text,
+            language="Korean",
+            ref_audio=str(ref_path),
+            x_vector_only_mode=True
+        )
+
+    raw = wavs[0]
+    if hasattr(raw, 'cpu'):
+        audio_data = raw.cpu().float().numpy()
+    else:
+        audio_data = np.array(raw, dtype=np.float32)
+
+    output_filename = f"output_{uuid.uuid4()}.wav"
+    output_path = AUDIO_BASE_PATH / output_filename
+    sf.write(str(output_path), audio_data, sr)
+    return f"/static/outputs/audios/{output_filename}"
+
+
+def generate_book_audios(paragraphs: List[str], voice_id: str = "default_women") -> List[str]:
+    """main.py 전용: 여러 문단의 오디오를 한 번에 생성 호출"""
+    urls = []
+    try:
+        load_model_base()
+        for p in paragraphs:
+            url = _generate_single_audio_internal(p, voice_id)
+            urls.append(url)
+        return urls
+    finally:
+        unload_model_base()
+
+
 # 부모 목소리 복제 TTS (온디맨드)
 @router.post("/generate_audio")
 async def generate_audio(request: AudioRequest):
-    ref_path = AUDIO_BASE_PATH / f"{request.voice_id}.wav"
-
-    if not os.path.exists(ref_path):
-        raise HTTPException(status_code=404, detail="해당 목소리 샘플을 찾을 수 없습니다.")
-
-    wavs = None
-    audio_data = None
-
     try:
-        log_gpu_memory("generate_audio 요청 시작")
-        load_model_base()  # ✅ model_base 로드, model은 CPU로
-
-        with torch.no_grad():
-            wavs, sr = model_base.generate_voice_clone(
-                text=request.text,
-                language="Korean",
-                ref_audio=str(ref_path),
-                x_vector_only_mode=True
-            )
-
-        log_gpu_memory("generate_audio 생성 직후")
-
-        raw = wavs[0]
-        if hasattr(raw, 'cpu'):
-            audio_data = raw.cpu().float().numpy()
-        else:
-            audio_data = np.array(raw, dtype=np.float32)
-
-        del wavs
-        wavs = None
-        torch.cuda.empty_cache()
-
-        output_filename = f"output_{uuid.uuid4()}.wav"
-        output_path = AUDIO_BASE_PATH / output_filename
-        sf.write(str(output_path), audio_data, sr)
-
-        return {"status": "success", "url": f"/static/outputs/audios/{output_filename}"}
-
+        load_model_base()
+        url = _generate_single_audio_internal(request.text, request.voice_id)
+        return {"status": "success", "url": url}
     except Exception as e:
-        torch.cuda.empty_cache()
         raise HTTPException(status_code=500, detail=str(e))
-
     finally:
-        for var in [wavs, audio_data]:
-            try:
-                del var
-            except:
-                pass
-        unload_model_base()  # ✅ model_base 해제, model GPU 복귀
-        gc.collect()
-        torch.cuda.empty_cache()
-        log_gpu_memory("generate_audio 완료")
+        unload_model_base()
 
 
 # 감정 표현 TTS (상시 로드 모델 사용)

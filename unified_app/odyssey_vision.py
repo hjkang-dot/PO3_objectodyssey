@@ -1,95 +1,33 @@
-import re
+import os
 import cv2
 import torch
+import types
 import numpy as np
 import datetime
 from PIL import Image
-from ultralytics import YOLOWorld, SAM
-from transformers import AutoProcessor, AutoModelForCausalLM
-
-target_keywords = [
-    # 1. 피규어, 동물, 인형 및 역할놀이 소품 (범용 무기 및 판타지 아이템 포함)
-    "figure", "figurine", "miniature", "character figure", "anime figure", # 피규어 기본형 추가
-    "teddy bear", "bear", "plush toy", "plushie", "stuffed animal", "action figure",
-    "toy robot", "robot", "toy dinosaur", "dinosaur", "toy dragon", "dragon",
-    "toy monster", "monster", "barbie doll", "baby doll", "fairy doll", "doll",
-    "wizard figure", "superhero toy", "alien toy", "astronaut toy", "lego set",
-    "lego", "building block", "block", "puzzle piece", "puzzle", "toy",
-    "toy sword", "toy gun", "water gun", "foam sword", "toy weapon", "toy blaster",
-    "sword", "gun", "pistol", "shield", "bow", "arrow", "wand", "magic wand", 
-    "staff", "crown", "tiara", "armor", "cape", "cloak",
-
-    # 2. 오감 놀이 및 보드게임 (신규 추가)
-    "slime", "play dough", "dough", "clay", "kinetic sand", "sand bucket", "toy shovel",
-    "board game", "playing card", "card", "dice", "domino", "rubiks cube", "cube",
-    "rubber duck", "bath toy", "water balloon",
-
-    # 3. 직업/역할놀이 세트 및 장난감 악기 (신규 추가)
-    "doctor kit", "toy stethoscope", "syringe toy", "toy kitchen", "cash register", 
-    "toy phone", "toy camera", "toy microphone",
-    "toy piano", "keyboard toy", "toy guitar", "ukulele", "xylophone", "tambourine", 
-    "castanets", "toy drum", "recorder",
-
-    # 4. 식기 및 조리 도구
-    "thermos flask", "flask", "water bottle", "bottle", "drinking tumbler",
-    "tumbler", "coffee mug", "mug", "tea cup", "cup", "drinking glass", "glass",
-    "glass pitcher", "pitcher", "water jug", "jug", "tea pot", "electric kettle",
-    "kettle", "serving tray", "tray", "dinner plate", "plate", "soup bowl", "bowl",
-    "silver spoon", "spoon", "metal fork", "fork", "table knife", "wooden chopsticks",
-    "chopsticks", "lunch box", "box", "picnic basket", "basket",
-
-    # 5. 탈것 및 이동수단 (RC카 등 확장)
-    "toy car", "car", "toy truck", "truck", "toy train", "train", "toy bus", "bus",
-    "fire engine toy", "fire engine", "police car toy", "police car", "ambulance toy",
-    "ambulance", "toy airplane", "airplane", "plane", "toy helicopter", "helicopter",
-    "toy rocket", "rocket", "toy spaceship", "spaceship", "toy boat", "boat",
-    "toy sailboat", "sailboat", "toy submarine", "submarine", "kick scooter",
-    "scooter", "skateboard", "tricycle", "bicycle", "bike", "rc car", "remote control car",
-
-    # 6. 공 및 스포츠 용품
-    "spinning top", "top", "soccer ball", "basketball", "baseball", "tennis ball",
-    "golf ball", "beach ball", "ball", "rubber balloon", "balloon", "flying kite",
-    "kite", "yo-yo toy", "yoyo", "marble stone", "marble", "frisbee disc", "frisbee",
-    "hula hoop", "jumping rope", "bubble wand", "safety helmet", "helmet",
-
-    # 7. 학용품 및 문구 (미술 소품 확장)
-    "pencil case", "sketch book", "note book", "book", "story book", "picture book",
-    "writing pen", "pen", "color pencil", "pencil", "crayon stick", "crayon",
-    "felt-tip marker", "marker", "oil pastel", "paint brush", "brush", "color palette",
-    "palette", "painting canvas", "canvas", "rubber eraser", "eraser", "pencil sharpener",
-    "plastic ruler", "ruler", "glue stick", "glue", "scotch tape", "tape",
-    "safety scissors", "paper sticker", "sticker", "origami", "color paper", "beads",
-
-    # 8. 가방, 모자 및 액세서리
-    "back pack", "backpack", "shoulder bag", "tote bag", "bag", "coin purse", "purse",
-    "leather wallet", "wallet", "wrist watch", "sun glasses", "eye glasses", "glasses",
-    "winter hat", "baseball cap", "hat", "cap", "sun visor", "rain umbrella", "umbrella",
-    "key chain", "house key", "key", "jewelry ring", "ring", "necklace", "bracelet",
-    "earring", "hair clip", "hair band", "hair brush",
-
-    # 9. 신발 및 의류 액세서리
-    "sneakers", "sandals", "shoes", "winter boots", "boots", "rain boots", "cotton socks",
-    "socks", "winter gloves", "gloves", "woolen scarf", "scarf", "neck tie", "tie",
-    "hand mirror", "mirror", "pocket comb", "comb", "hand fan", "fan",
-
-    # 10. 자연물 및 식품
-    "red apple", "apple", "yellow banana", "banana", "orange fruit", "orange",
-    "purple grapes", "grape", "strawberry", "cherry fruit", "cherry", "watermelon slice",
-    "watermelon", "sweet corn", "corn", "orange carrot", "carrot", "red tomato", "tomato",
-    "brown potato", "potato", "sliced bread", "bread", "chocolate cookie", "cookie",
-    "cream cake", "cake", "fruit candy", "candy", "sweet lollipop", "lollipop",
-    "ice cream cone", "ice cream", "small flower", "flower", "green leaf", "leaf",
-    "round stone", "stone", "tree stick", "stick", "pine cone", "sea shell", "shell"
-]
+from transformers import (
+    AutoProcessor,
+    AutoModelForCausalLM,
+    AutoModelForImageSegmentation,  # BiRefNet 로드용
+)
 
 # ---------------------------------------------------------
-# 1. 모델 영역 로드 (FastAPI Startup/Streamlit Cache용)
+# ※ 삭제된 레거시 항목
+# - target_keywords 리스트 (YOLO-World 텍스트 탐지용)
+# - ultralytics YOLOWorld, SAM 임포트 및 로드 로직
+# - process_object_odyssey() 의 target_keywords 파라미터
+# - YOLO 탐지 / SAM 분할 처리 로직 전체
+# ---------------------------------------------------------
+
+# ---------------------------------------------------------
+# 1. 모델 로드 (FastAPI Startup / Streamlit Cache용)
 # ---------------------------------------------------------
 def load_all_models():
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
-    # Florence-2 (transformers 5.x 호환: eager 어텐션 사용, dtype 파라미터명 변경)
+    # ── Florence-2 ──────────────────────────────────────────
+    # transformers 5.x 호환: eager 어텐션 사용, dtype 파라미터명 변경
     f_model = AutoModelForCausalLM.from_pretrained(
         "microsoft/Florence-2-base",
         dtype=torch_dtype,
@@ -136,36 +74,138 @@ def load_all_models():
         }
 
     # language_model 인스턴스에 메서드 바인딩
-    import types
-    _lang_model.prepare_inputs_for_generation = types.MethodType(patched_prepare_inputs_for_generation, _lang_model)
+    _lang_model.prepare_inputs_for_generation = types.MethodType(
+        patched_prepare_inputs_for_generation, _lang_model
+    )
 
-    # YOLO-World
-    y_model = YOLOWorld("models/yolov8m-worldv2.pt")
+    # ── BiRefNet (배경 제거 / 누끼 추출) ────────────────────
+    biref_model = AutoModelForImageSegmentation.from_pretrained(
+        "ZhengPeng7/BiRefNet",
+        trust_remote_code=True
+    ).to(device)
+    biref_model.eval()
 
-    # SAM 2.1
-    s_model = SAM("models/sam2.1_b.pt")
+    return f_model, f_processor, biref_model, device, torch_dtype
 
-    return f_model, f_processor, y_model, s_model, device, torch_dtype
 
 # 모델 초기화 (전역)
-f_model, f_processor, y_model, s_model, device, torch_dtype = load_all_models()
+f_model, f_processor, biref_model, device, torch_dtype = load_all_models()
 
 # ---------------------------------------------------------
-# 2. 핵심 처리 함수 (FastAPI/Streamlit 공용)
+# 2. BiRefNet 내부 추론 헬퍼
 # ---------------------------------------------------------
-def process_object_odyssey(input_image_array, target_keywords):
+def _run_birefnet(pil_img: Image.Image, model, device) -> np.ndarray:
     """
-    input_image_array: OpenCV형태(BGR) 또는 NumPy 배열 이미지
+    PIL RGB 이미지를 받아 BiRefNet으로 전경 마스크(0~1 float32 numpy)를 반환한다.
+    마스크는 원본 이미지와 동일한 크기로 리사이즈된다.
     """
-    h, w, _ = input_image_array.shape
-    now = datetime.datetime.now().strftime('%Y-%m-%d')
-    
-    # [1] Florence-2 캡션
-    # OpenCV(BGR) -> PIL(RGB) 변환 후 사용
+    from torchvision import transforms
+
+    orig_w, orig_h = pil_img.size
+
+    # BiRefNet 권장 입력 크기: 1024×1024
+    transform = transforms.Compose([
+        transforms.Resize((1024, 1024)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ])
+
+    input_tensor = transform(pil_img).unsqueeze(0).to(device)
+
+    with torch.no_grad():
+        preds = model(input_tensor)
+
+    # BiRefNet 출력: 리스트의 마지막 원소가 최종 예측
+    pred = preds[-1].squeeze().cpu().numpy()  # shape: (H, W)
+
+    # sigmoid 정규화 후 원본 크기로 리사이즈
+    pred = 1 / (1 + np.exp(-pred))  # sigmoid
+    pred_resized = cv2.resize(pred, (orig_w, orig_h), interpolation=cv2.INTER_LINEAR)
+
+    return pred_resized  # float32, 값 범위 0.0 ~ 1.0
+
+
+# ---------------------------------------------------------
+# 3. 핵심 처리 함수 (FastAPI / Streamlit 공용)
+# ---------------------------------------------------------
+def process_object_odyssey(input_image_array: np.ndarray) -> dict:
+    """
+    input_image_array : OpenCV 형태(BGR) 또는 NumPy 배열 이미지
+
+    반환값
+    ------
+    성공 시:
+        {
+            "status"      : "success",
+            "description" : str,        # Florence-2 상세 묘사 텍스트
+            "output_path" : str,        # 저장된 누끼 PNG 상대 경로
+            "rgba_image"  : np.ndarray  # Streamlit 등에서 바로 표시용 RGBA 배열
+        }
+    실패 시:
+        {
+            "status"  : "error",
+            "message" : str
+        }
+
+    ※ 삭제된 반환 필드
+    - "target"  : YOLO-World 기반 키워드 탐지 결과 (레거시 제거로 불필요)
+    - "message" : 성공 시 항상 "처리 완료" 고정 문자열이었으므로 제거
+    """
+    h, w = input_image_array.shape[:2]
+    now = datetime.datetime.now().strftime('%Y-%m-%d_%H%M%S')
+
+    # BGR → RGB PIL 변환 (이후 모든 PIL 처리는 RGB 기준)
     img_rgb = cv2.cvtColor(input_image_array, cv2.COLOR_BGR2RGB)
     pil_img = Image.fromarray(img_rgb)
 
-    inputs = f_processor(text="<CAPTION>", images=pil_img, return_tensors="pt").to(device, torch_dtype)
+    # ── [Step 1] BiRefNet 누끼 마스크 추출 ──────────────────
+    try:
+        mask_float = _run_birefnet(pil_img, biref_model, device)  # float32, 0.0~1.0
+    except Exception as e:
+        return {"status": "error", "message": f"BiRefNet 마스크 추출 실패: {e}"}
+
+    # 이진 마스크 (uint8, 0 또는 255)
+    mask_uint8 = (mask_float * 255).clip(0, 255).astype(np.uint8)
+
+    # ── [Step 2] 파일 저장 (배경 투명 RGBA PNG) ─────────────
+    img_rgba_pil = Image.fromarray(img_rgb).convert("RGBA")
+    # 알파 채널을 마스크로 교체
+    r, g, b, _ = img_rgba_pil.split()
+    alpha_ch = Image.fromarray(mask_uint8, mode="L")
+    img_rgba_pil = Image.merge("RGBA", (r, g, b, alpha_ch))
+
+    # 결과를 numpy로도 보관 (Streamlit 표시용)
+    img_rgba = np.array(img_rgba_pil)
+
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    nukki_dir = os.path.join(base_dir, "nukki")
+    os.makedirs(nukki_dir, exist_ok=True)
+
+    filename = f"object_{now}.png"
+    abs_output_path = os.path.join(nukki_dir, filename)
+    img_rgba_pil.save(abs_output_path)
+    output_path = f"nukki/{filename}"
+
+    # ── [Step 3] Florence-2 분석용 흰색 배경 이미지 준비 ────
+    # 마스크: 객체 영역은 그대로, 배경만 흰색(255,255,255)으로 채움
+    # → Florence-2가 배경 노이즈 없이 객체에만 집중하도록 유도
+    mask_3ch = np.stack([mask_uint8] * 3, axis=-1).astype(np.float32) / 255.0
+    white_bg = np.ones((h, w, 3), dtype=np.float32)  # 흰색 배경
+    img_rgb_f32 = img_rgb.astype(np.float32) / 255.0
+
+    # 합성: 객체 픽셀 * mask + 흰색 배경 * (1 - mask)
+    composited = (img_rgb_f32 * mask_3ch + white_bg * (1 - mask_3ch))
+    composited_uint8 = (composited * 255).clip(0, 255).astype(np.uint8)
+    pil_white_bg = Image.fromarray(composited_uint8)
+
+    # ── [Step 4] Florence-2 DETAILED_CAPTION 실행 ───────────
+    task_prompt = "<DETAILED_CAPTION>"
+    inputs = f_processor(
+        text=task_prompt,
+        images=pil_white_bg,
+        return_tensors="pt"
+    ).to(device, torch_dtype)
+
     generated_ids = f_model.generate(
         input_ids=inputs["input_ids"],
         pixel_values=inputs["pixel_values"],
@@ -175,67 +215,16 @@ def process_object_odyssey(input_image_array, target_keywords):
         use_cache=False,  # transformers 버전 호환성 문제 방지 (past_key_values 내 None 에러)
     )
     generated_text = f_processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
-    parsed_answer = f_processor.post_process_generation(generated_text, task="<CAPTION>", image_size=(w, h))
-    florence_text = parsed_answer["<CAPTION>"].lower()
-    print(florence_text)
+    parsed_answer = f_processor.post_process_generation(
+        generated_text, task=task_prompt, image_size=(w, h)
+    )
+    florence_text = parsed_answer[task_prompt]
+    print(f"[Florence-2 DETAILED_CAPTION] {florence_text}")
 
-    # [2] 타깃 키워드 정렬 (최적화)
-    target_keywords.sort(key=len, reverse=True)
-
-    # [4] 타깃 키워드 추출
-    detected_target = None
-    for t_kw in target_keywords:
-        if re.search(rf'\b{re.escape(t_kw)}(?:s|es)?\b', florence_text):
-            detected_target = f"{florence_text},{t_kw}"
-            break
-
-    if not detected_target:
-        return {"status": "error", "message": "대상을 찾지 못했습니다.", "target": None}
-
-    # [5] YOLO-World 탐지 (중복 로직 통합 및 새 토크나이저 방식)
-    print(detected_target)
-    y_model.to('cpu')
-    y_model.set_classes([detected_target])
-    y_model.to('cuda')
-    
-    # 텍스트 임베딩 dtype를 모델에서 가져와 맞춤(오류 방지)
-    m_dtype = next(y_model.model.parameters()).dtype
-    y_model.model.txt_feats = y_model.model.txt_feats.to(device='cuda', dtype=m_dtype)
-
-    yolo_results = y_model(input_image_array, conf=0.1)
-
-    if len(yolo_results[0].boxes) == 0:
-        return {"status": "error", "message": f"'{detected_target}' 위치 탐지 실패", "target": detected_target}
-
-    # [6] SAM 2.1 마스크 추출
-    box_coords = yolo_results[0].boxes.xyxy[0].cpu().numpy().tolist()
-    sam_results = s_model.predict(input_image_array, bboxes=[box_coords], device='cuda')
-
-    if sam_results[0].masks is not None:
-        mask = sam_results[0].masks.data[0].cpu().numpy().astype(np.uint8)
-        mask_resized = cv2.resize(mask, (w, h), interpolation=cv2.INTER_NEAREST)
-        
-        img_rgba = cv2.cvtColor(input_image_array, cv2.COLOR_BGR2BGRA)
-        img_rgba[:, :, 3] = (mask_resized * 255).astype(np.uint8)
-        
-        # 파일 저장 및 결과 반환
-        import os
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        nukki_dir = os.path.join(base_dir, "nukki")
-        os.makedirs(nukki_dir, exist_ok=True)
-        
-        filename = f"{detected_target}_{now}.png"
-        abs_output_path = os.path.join(nukki_dir, filename)
-        cv2.imwrite(abs_output_path, img_rgba)
-        
-        output_path = f"nukki/{filename}"
-        
-        return {
-            "status": "success", 
-            "message": "처리 완료", 
-            "target": detected_target, 
-            "output_path": output_path,
-            "rgba_image": img_rgba # Streamlit에서 바로 보여주기 위함
-        }
-    
-    return {"status": "error", "message": "SAM 분할 실패", "target": detected_target}
+    # ── 결과 반환 ────────────────────────────────────────────
+    return {
+        "status"      : "success",
+        "description" : florence_text,   # Florence-2 상세 묘사
+        "output_path" : output_path,     # 저장된 누끼 파일 상대 경로
+        "rgba_image"  : img_rgba,        # RGBA numpy 배열 (Streamlit 표시용)
+    }

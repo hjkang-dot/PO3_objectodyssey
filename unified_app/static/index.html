@@ -202,9 +202,168 @@
                 0 6px 0 #E27D60;
             margin-bottom: 40px;
         }
+        /* 플로팅 작업 상태 배지 */
+        #floatingStatus {
+            position: fixed; top: 20px; right: 20px; z-index: 10000;
+            background: #FF9F1C; color: white; padding: 12px 20px;
+            border-radius: 30px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none;
+            border: 3px solid #fff; animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .btn-cancel {
+            background: #FF4D4D; color: white; border: none; padding: 10px 20px;
+            border-radius: 20px; font-weight: bold; margin-top: 20px; cursor: pointer;
+            box-shadow: 0 4px 0 #cc0000; font-family: 'Jua', sans-serif;
+        }
+        .btn-cancel:active { transform: translateY(4px); box-shadow: 0 0 0 #cc0000; }
+
+        /* --- 고도화된 3D 동화책 스타일 --- */
+        .book-container {
+            width: 100vw; height: 75vh;
+            display: flex; justify-content: center; align-items: center;
+            perspective: 2000px; margin-top: 20px;
+            padding: 20px;
+        }
+
+        .book {
+            width: 100%; max-width: 1100px; height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.15, 0.75, 0.5, 1);
+            display: flex;
+            background: #5d4037; /* 책 커버 색상 */
+            border-radius: 15px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.5);
+            padding: 10px; /* 커버 두께감 */
+        }
+
+        /* 반응형: 화면이 작으면 책의 비율 조정 */
+        @media (max-width: 1050px) {
+            .book-container { height: 65vh; }
+        }
+
+        .page-spread {
+            width: 100%; height: 100%;
+            display: flex;
+            background: hsl(40, 30%, 96%); /* 미색 (Cream/Off-white) */
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.05); /* 기본 입체감 */
+        }
+
+        /* 중앙 접힘선 (Spine) */
+        .page-spread::before {
+            content: ""; position: absolute; top: 0; left: 50%; width: 2px; height: 100%;
+            background: rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .page-spread::after {
+            content: ""; position: absolute; top: 0; left: 50%; width: 60px; height: 100%;
+            background: linear-gradient(to right, 
+                rgba(0,0,0,0.15) 0%, 
+                rgba(0,0,0,0) 20%,
+                rgba(0,0,0,0) 80%,
+                rgba(0,0,0,0.15) 100%);
+            transform: translateX(-50%);
+            z-index: 5;
+            pointer-events: none;
+        }
+
+        /* 왼쪽 페이지 (이미지 영역) */
+        .page-left {
+            flex: 1; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px;
+            border-right: 1px solid rgba(0,0,0,0.05);
+            position: relative;
+            background: linear-gradient(to right, rgba(255,255,255,0.5), rgba(255,255,255,0));
+        }
+
+        /* 오른쪽 페이지 (텍스트 영역) */
+        .page-right {
+            flex: 1; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            padding: 50px;
+            position: relative;
+            background: linear-gradient(to left, rgba(255,255,255,0.5), rgba(255,255,255,0));
+        }
+
+        .book-image { 
+            width: 100%; height: 100%; 
+            object-fit: contain; 
+            border-radius: 12px; 
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+            background: #fff;
+            padding: 15px;
+            border: 1px solid rgba(0,0,0,0.05);
+            transition: transform 0.3s;
+        }
+        .book-image:hover { transform: scale(1.02); }
+        
+        .book-text { 
+            font-size: 30px; line-height: 1.8; color: #34495e; 
+            text-align: left; word-break: keep-all;
+            /* 가독성을 위해 명조체 계열 권장하거나 현재 Jua 유지 */
+            font-family: 'Jua', sans-serif;
+            width: 100%;
+            padding: 20px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 15px;
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.02);
+            overflow-y: auto;
+        }
+
+        /* 모바일 대응: 세로 모드에서는 상하 배치 */
+        @media (max-width: 768px) { 
+            .book-container { height: 85vh; padding: 10px; }
+            .book { flex-direction: column; height: auto; min-height: 600px; padding: 5px; }
+            .page-spread { flex-direction: column; height: 100%; }
+            .page-left, .page-right { padding: 20px; flex: none; width: 100%; }
+            .page-left { height: 45%; border-right: none; border-bottom: 2px solid rgba(0,0,0,0.05); }
+            .page-right { height: 55%; }
+            .page-spread::before, .page-spread::after { display: none; }
+            .book-text { font-size: 20px; line-height: 1.6; }
+        }
+
+        /* 하단 네비게이션 및 대시보드 - Glassmorphism 적용 */
+        .nav-controls {
+            display: flex; gap: 30px; margin-top: 25px; align-items: center;
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 15px 40px;
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .btn-page {
+            background: #FF9F1C; border: none; color: white; padding: 12px 35px;
+            border-radius: 30px; font-size: 26px; font-family: 'Jua', sans-serif;
+            cursor: pointer; box-shadow: 0 6px 0 #E27D60;
+            transition: all 0.2s;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .btn-page:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 8px 0 #E27D60; }
+        .btn-page:active:not(:disabled) { transform: translateY(4px); box-shadow: 0 2px 0 #E27D60; }
+        .btn-page:disabled { background: #dcdde1; box-shadow: 0 6px 0 #bdc3c7; cursor: not-allowed; opacity: 0.7; }
+        
+        .page-indicator { 
+            font-size: 24px; font-weight: bold; color: #fff; 
+            background: rgba(17, 138, 178, 0.82); padding: 8px 25px; 
+            border-radius: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
+    <div id="floatingStatus" onclick="resumePendingTask()">🪄 마법 부리는 중... (클릭)</div>
 
     <!-- 성별 선택 화면 -->
     <div id="screen-gender" class="screen active" style="justify-content: center;">
@@ -325,6 +484,7 @@
     <div id="screen-loading" class="screen">
         <div class="loader-icon" id="loadingIcon">🚀</div>
         <div class="loading-text" id="loadingMsg">가마솥에서 마법을 섞는 중...<br>(조금만 기다려주세요!)</div>
+        <button id="cancelBtn" class="btn-cancel" onclick="cancelTask()">❌ 마법 취소하기</button>
     </div>
 
     <div id="screen-result" class="screen">
@@ -357,32 +517,27 @@
         </div>
     </div>
 
-    <div id="screen-story" class="screen" style="padding-top: 40px;">
-        <div style="width: 100%; max-width: 450px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: -20px;">
-            <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
-            <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
+    <div id="screen-story" class="screen" style="padding-top: 40px; overflow: hidden;">
+        <div style="width: 100%; max-width: 90%; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: -20px;">
+            <button onclick="goBack()" style="background: rgba(255,255,255,0.7); border: 2px solid #118AB2; padding: 5px 15px; border-radius: 20px; font-size: 18px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
+            <h2 id="storyTitle" class="story-title" style="margin: 0; flex: 1;">동화 제목</h2>
+            <button onclick="showScreen('screen-home')" style="background: rgba(255,255,255,0.7); border: 2px solid #118AB2; padding: 5px 15px; border-radius: 20px; font-size: 18px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 홈</button>
         </div>
-        <div class="story-container">
-            <h2 id="storyTitle" class="story-title">동화 제목</h2>
-            <!-- TTS 읽어주기 버튼 -->
-            <button id="ttsButton" class="btn-secondary" onclick="toggleTTS()" style="margin-bottom: 20px; background: #FF9F1C; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; font-size: 18px; cursor: pointer; box-shadow: 0 4px 0 #E58E1A; display: block; margin-left: auto; margin-right: auto;">🔊 동화 당장 읽기!</button>
 
-            <!-- 캐릭터 이미지를 이야기 윗부분에 고정 노출 (클릭 시 크게 보기 모달 띄움) -->
-            <img id="storyImage" class="story-image" src="" alt="이야기 그림" onclick="openImageModal(this.src)" style="display:none; cursor:pointer;" title="클릭해서 크게 보기">
-            
-            <div id="storyContent">
-                <!-- 이야기 단락들이 동적으로 들어갑니다. -->
+        <div class="book-container">
+            <div class="book" id="bookCanvas">
+                <!-- 페이지들이 JS에 의해 동적으로 생성됩니다 -->
             </div>
-            
-            <div id="storyChoices" style="margin-top: 25px; border-top: 2px dashed #118AB2; padding-top: 15px; display: none;">
-                <h3 style="color:#118AB2; margin-bottom: 10px;">다음에 무슨 일이 생길까?</h3>
-                <div id="choiceButtons"></div>
-            </div>
+        </div>
 
-            <!-- 저장 버튼: 항상 제일 마지막에 고정 -->
-            <div id="saveBtnContainer" style="margin-top: 25px; border-top: 2px dashed #FFD166; padding-top: 20px; display: none;">
-                <button class="btn-primary" style="background:#06D6A0; box-shadow: 0 8px 0 #05A87D; width:100%; font-size: 22px;" onclick="saveCurrentStory()">💾 지금 동화책 저장하기</button>
-            </div>
+        <div class="nav-controls">
+            <button id="btnPrevPage" class="btn-page" onclick="prevPage()">이전</button>
+            <div id="pageNumber" class="page-indicator">1 / 5</div>
+            <button id="btnNextPage" class="btn-page" onclick="nextPage()">다음</button>
+        </div>
+
+        <div id="saveBtnContainer" style="margin-top: 20px; display: none;">
+            <button class="btn-primary" style="background:#06D6A0; box-shadow: 0 4px 0 #05A87D; padding: 10px 30px; font-size: 20px;" onclick="saveCurrentStory()">💾 책장에 쏘옥! 저장하기</button>
         </div>
     </div>
 
@@ -403,11 +558,76 @@
         let charImageSrc = null;
         let currentStoryTitle = "";
         let currentStoryParagraphs = [];
-        let currentTtsScript = [];
-        let ttsPlaying = false;
-        let ttsAudioPlayer = null;
+        let currentStoryAudios = []; // 추가: 각 페이지별 오디오 URL
+        let currentStoryImages = []; // 추가: 각 페이지별 이미지 URL
+        let currentPageIndex = 0;    // 현재 펼쳐진 페이지 인덱스 (0~4)
+        let pageAudioPlayer = null;
         let selectedStoryTone = "랜덤"; // 동화 스타일 선택값
         let userGender = null;
+
+        // --- 작업 상태 관리 전역 변수 ---
+        let pendingTaskType = "none"; // "none", "character", "story"
+        let pendingTaskData = null;   // 중간 데이터 저장
+        let isTaskPending = false;    // 현재 생성 프로세스 진행 중인지
+        let isCanceled = false;       // 취소 버튼 클릭 여부
+        let lastGeneratedStory = null; // 가장 최근 생성된 동화 데이터
+
+        // --- 작업 관리 유틸리티 ---
+        function updateFloatingStatus(msg) {
+            const badge = document.getElementById('floatingStatus');
+            if (isTaskPending || pendingTaskType === "complete") {
+                badge.style.display = 'block';
+                if (msg) badge.textContent = msg;
+            } else {
+                badge.style.display = 'none';
+            }
+        }
+
+        function cancelTask() {
+            if (!confirm("변신 마법을 정말 취소할까요? 😢\n(만들던 정보가 사라져요)")) return;
+            isCanceled = true;
+            isTaskPending = false;
+            pendingTaskType = "none";
+            
+            // 서버에 임시 파일 정리 요청 (동화 생성 중 취소 시 활용)
+            if (pendingTaskData && pendingTaskData.output_path) {
+                fetch('/cleanup-temp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path: pendingTaskData.output_path })
+                });
+            }
+            
+            updateFloatingStatus();
+            showScreen('screen-home');
+            alert("마법이 취소되었습니다. 대기실로 돌아갑니다.");
+        }
+
+        function resumePendingTask() {
+            if (pendingTaskType === "character") showScreen('screen-loading');
+            else if (pendingTaskType === "story") showScreen('screen-loading');
+            else if (pendingTaskType === "complete") {
+                if(lastGeneratedStory) renderBook(lastGeneratedStory);
+                else showScreen('screen-home');
+            }
+        }
+
+        async function deleteStory(filename) {
+            if (!confirm("이 동화책을 정말 보관함에서 삭제할까요? 🗑️")) return;
+            try {
+                const res = await fetch(`/delete-story/${filename}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.status === "success") {
+                    alert("삭제되었습니다.");
+                    loadLibrary(); // 목록 갱신
+                } else {
+                    alert("삭제 실패: " + data.detail);
+                }
+            } catch (err) {
+                console.error(err);
+                alert("삭제 중 오류가 발생했습니다.");
+            }
+        }
 
         function selectGender(gender) {
             userGender = gender;
@@ -665,6 +885,13 @@
                 return; 
             }
 
+            // 작업 상태 초기화
+            isTaskPending = true;
+            isCanceled = false;
+            pendingTaskType = "character";
+            pendingTaskData = null;
+            updateFloatingStatus("🪄 주인공 변신 중...");
+
             showScreen('screen-loading');
             const loadingMsg = document.getElementById('loadingMsg');
             const formData = new FormData();
@@ -675,12 +902,14 @@
                 const extractResponse = await fetch('/extract', { method: 'POST', body: formData });
                 const extractResult = await extractResponse.json();
                 
+                if (isCanceled) return; // 취소 여부 체크
                 if (extractResult.status === "success") {
+                    pendingTaskData = extractResult; // 임시 파일 경로 저장
                     loadingMsg.innerHTML = `<b>${cName}</b> 발견!<br>멋진 캐릭터로 변신 중이에요... ✨`;
                     
                     const artPayload = {
                         vision_result: extractResult,
-                        parent_input: { "name": cName, "personality": cTrait, "job": cPlace, "goal": cGoal }, // job을 사는곳으로 매핑할수도 있음
+                        parent_input: { "name": cName, "personality": cTrait, "job": cPlace, "goal": cGoal },
                         reference_image: extractResult.output_path,
                         image_style: selectedImageStyle
                     };
@@ -691,9 +920,14 @@
                         body: JSON.stringify(artPayload)
                     });
 
+                    if (isCanceled) return; // 취소 여부 체크
                     const artResult = await artResponse.json();
 
                     if (artResult.status === "success") {
+                        isTaskPending = false;
+                        pendingTaskType = "none";
+                        updateFloatingStatus();
+                        
                         globalCharacterSheet = artResult.character_sheet;
                         
                         // 생성된 이미지 표시
@@ -726,31 +960,40 @@
                 }
             } catch (error) {
                 console.error(error);
+                isTaskPending = false;
+                pendingTaskType = "none";
+                updateFloatingStatus();
                 loadingMsg.innerHTML = "앗! 마법 지팡이가 고장났어요.<br>조금 뒤에 새로고침 해주세요 🛠️<br>"+error.message;
             }
         }
 
-        async function startStoryGen(choiceText = null) {
+        async function startStoryGen() {
+            if (!globalCharacterSheet) {
+                alert("캐릭터 정보를 먼저 생성해주세요! (첫 단계에서 '마법 부리기' 성공 후 진행 가능)");
+                showScreen('screen-result');
+                return;
+            }
+            isTaskPending = true;
+            isCanceled = false;
+            pendingTaskType = "story";
+            updateFloatingStatus("✍️ 동화 쓰는 중...");
+
             showScreen('screen-loading');
             const loadingMsg = document.getElementById('loadingMsg');
             const loadingIcon = document.getElementById('loadingIcon');
             loadingIcon.innerHTML = "📖";
-            
-            if (choiceText) {
-                loadingMsg.innerHTML = `"${choiceText}"를 골랐군요!<br>다음 이야기를 쓰고 있어요... ✍️`;
-            } else {
-                loadingMsg.innerHTML = "첫 번째 이야기를 쓰는 중이에요... ✍️";
-            }
+            loadingMsg.innerHTML = "우리 아이만을 위한 5페이지 동화를 쓰고 있어요... ✍️<br>(음성 마법도 함께 부리는 중이라 조금 걸려요!)";
 
             try {
-                // 이전 스토리 컨텍스트가 있다면 캐릭터 시트에 합치거나 프롬프트에 넣어야 함
                 const payload = {
                     character_sheet: globalCharacterSheet,
-                    extra_prompt: choiceText ? `주인공이 다음 행동을 선택했습니다: ${choiceText}` : "",
-                    story_tone: selectedStoryTone === "랜덤" ? null : selectedStoryTone
+                    story_tone: selectedStoryTone === "랜덤" ? null : selectedStoryTone,
+                    char_image_path: charImageSrc,
+                    character_name: document.getElementById('charName').value.trim() ||"주인공",
+                    voice_id: "default_women" // 실제 연동 시 저장된 voice_id 사용 가능
                 };
 
-                const storyRes = await fetch('/generate-story', {
+                const storyRes = await fetch('/generate-book', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -758,84 +1001,110 @@
                 const storyData = await storyRes.json();
 
                 if (storyData.status === "success") {
-                    renderStory(storyData);
+                    renderBook(storyData);
                 } else {
-                    throw new Error(storyData.detail || "스토리 생성 실패");
+                    throw new Error(storyData.detail || "동화 생성 실패");
                 }
 
             } catch (error) {
                 console.error(error);
-                alert("스토리 생성 중 오류가 발생했습니다:\n" + error.message);
-                loadingMsg.innerHTML = "이야기를 짓다가 깜빡 졸았어요.<br>다시 시도해볼까요? 😴<br><small style='color:red;'>" + error.message + "</small>";
-                setTimeout(() => showScreen('screen-result'), 3000); // 뷰어로 돌려보냄
+                alert("동화 생성 중 오류가 발생했습니다:\n" + error.message);
+                loadingMsg.innerHTML = "이야기를 짓다가 깜빡 졸았어요.<br>다시 시도해볼까요? 😴";
+                setTimeout(() => showScreen('screen-result'), 3000);
             }
         }
 
-        function renderStory(data) {
+        // 사운드 효과 초기화
+        const pageFlipSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2591/2591-preview.mp3");
+
+        function renderBook(data) {
             currentStoryTitle = data.title || "마법의 동화책";
             currentStoryParagraphs = data.story_paragraphs || [];
-            currentTtsScript = data.tts_script || [];
-            
-            // 새 동화가 나오면 읽어주기 중단 및 상태 초기화
-            if (ttsAudioPlayer) {
-                ttsAudioPlayer.pause();
-                ttsAudioPlayer = null;
-            }
-            ttsPlaying = false;
-            const ttsBtn = document.getElementById("ttsButton");
-            if(ttsBtn) ttsBtn.innerText = "🔊 동화 당장 읽기!";
-            
+            currentStoryAudios = data.page_audios || [];
+            currentStoryImages = data.page_images || Array(data.story_paragraphs.length).fill(charImageSrc);
+            currentPageIndex = 0;
+
             document.getElementById('storyTitle').innerText = currentStoryTitle;
             
-            if(charImageSrc) {
-                const sImg = document.getElementById('storyImage');
-                sImg.src = charImageSrc;
-                sImg.style.display = 'block';
+            const bookCanvas = document.getElementById('bookCanvas');
+            bookCanvas.innerHTML = ""; // 초기화
+
+            // 각 문단/이미지 한 세트를 하나의 Spread(펼침면)로 생성
+            for(let i = 0; i < currentStoryParagraphs.length; i++) {
+                const spreadEl = document.createElement('div');
+                spreadEl.className = 'page-spread';
+                spreadEl.id = `spread-${i}`;
+                spreadEl.style.display = (i === 0) ? 'flex' : 'none'; // 첫 페이지만 노출
+
+                spreadEl.innerHTML = `
+                    <div class="page-left">
+                        <img src="${currentStoryImages[i] || charImageSrc}" class="book-image">
+                    </div>
+                    <div class="page-right">
+                        <div class="book-text">${currentStoryParagraphs[i]}</div>
+                    </div>
+                `;
+                bookCanvas.appendChild(spreadEl);
             }
 
-            const contentDiv = document.getElementById('storyContent');
-            contentDiv.innerHTML = ""; // 기존 글 지우기
-            
-            if (data.story_paragraphs) {
-                data.story_paragraphs.forEach(para => {
-                    const p = document.createElement("div");
-                    p.className = "story-paragraph";
-                    p.innerText = para;
-                    contentDiv.appendChild(p);
-                });
-            }
-
-            const choicesDiv = document.getElementById('storyChoices');
-            const choiceBtnContainer = document.getElementById('choiceButtons');
-            choiceBtnContainer.innerHTML = "";
-
-            if (data.choices && data.choices.length > 0) {
-                choicesDiv.style.display = 'block';
-                data.choices.forEach(choice => {
-                    const btn = document.createElement('button');
-                    btn.className = "btn-primary btn-choice";
-                    btn.style.width = "100%";
-                    btn.innerText = choice.text || "알 수 없는 선택지";
-                    btn.onclick = () => {
-                        startStoryGen(choice.text);
-                    };
-                    choiceBtnContainer.appendChild(btn);
-                });
-            } else {
-                choicesDiv.style.display = 'none';
-                const endBtn = document.createElement('button');
-                endBtn.className = "btn-secondary btn-primary wobble";
-                endBtn.style.marginTop = "20px";
-                endBtn.innerText = "💫 동화가 끝났어요 (처음으로)";
-                endBtn.onclick = () => location.reload();
-                contentDiv.appendChild(endBtn);
-            }
-
-            // 저장 버튼 컨테이너를 항상 최하단에 표시
-            const saveBtnContainer = document.getElementById('saveBtnContainer');
-            if(saveBtnContainer) saveBtnContainer.style.display = 'block';
-
+            updateBookUI();
             showScreen('screen-story');
+            
+            // 첫 페이지 로드 후 잠시 뒤 음성 재생
+            setTimeout(() => playPageAudio(0), 1000);
+        }
+
+        function updateBookUI() {
+            const spreads = document.querySelectorAll('.page-spread');
+            const total = currentStoryParagraphs.length;
+            
+            spreads.forEach((s, idx) => {
+                s.style.display = (idx === currentPageIndex) ? 'flex' : 'none';
+            });
+
+            document.getElementById('pageNumber').innerText = `${currentPageIndex + 1} / ${total}`;
+            document.getElementById('btnPrevPage').disabled = (currentPageIndex === 0);
+            document.getElementById('btnNextPage').disabled = (currentPageIndex === total - 1);
+
+            const saveBtn = document.getElementById('saveBtnContainer');
+            if(saveBtn) saveBtn.style.display = (currentPageIndex === total - 1) ? 'block' : 'none';
+        }
+
+        function nextPage() {
+            if (currentPageIndex < currentStoryParagraphs.length - 1) {
+                // 사운드 재생
+                pageFlipSound.currentTime = 0;
+                pageFlipSound.play().catch(e => console.warn("SFX 재생 실패:", e));
+
+                currentPageIndex++;
+                updateBookUI();
+                playPageAudio(currentPageIndex);
+            }
+        }
+
+        function prevPage() {
+            if (currentPageIndex > 0) {
+                // 사운드 재생
+                pageFlipSound.currentTime = 0;
+                pageFlipSound.play().catch(e => console.warn("SFX 재생 실패:", e));
+
+                currentPageIndex--;
+                updateBookUI();
+                playPageAudio(currentPageIndex);
+            }
+        }
+
+        function playPageAudio(index) {
+            if (pageAudioPlayer) {
+                pageAudioPlayer.pause();
+                pageAudioPlayer = null;
+            }
+
+            const audioUrl = currentStoryAudios[index];
+            if (audioUrl) {
+                pageAudioPlayer = new Audio(audioUrl + "?t=" + new Date().getTime());
+                pageAudioPlayer.play().catch(e => console.warn("오디오 재생 실패:", e));
+            }
         }
 
         async function saveCurrentStory() {
@@ -904,11 +1173,26 @@
                             const textDiv = document.createElement('div');
                             textDiv.style.textAlign = "left";
                             textDiv.style.flex = "1";
-                            textDiv.innerHTML = `<h3 style="margin: 0 0 5px 0; color: #118AB2; font-size: 20px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${story.title || "제목 없음"}</h3>
+                            textDiv.innerHTML = `<h3 style="margin: 0 0 5px 0; color: #118AB2; font-size: 18px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">${story.title || "제목 없음"}</h3>
                                                <span style="background: #E0F6FF; padding: 3px 8px; border-radius: 10px; font-size: 14px; color: #0C6B8A;">주인공: ${story.character_name || "???"}</span>`;
                             
+                            const delBtn = document.createElement('button');
+                            delBtn.innerHTML = "🗑️";
+                            delBtn.style.background = "none";
+                            delBtn.style.border = "none";
+                            delBtn.style.fontSize = "24px";
+                            delBtn.style.cursor = "pointer";
+                            delBtn.style.padding = "5px";
+                            delBtn.style.color = "#FF4D4D";
+                            delBtn.title = "삭제하기";
+                            delBtn.onclick = (e) => {
+                                e.stopPropagation(); // 카드 클릭 이벤트 전파 방지
+                                deleteStory(story.filename);
+                            };
+
                             card.appendChild(img);
                             card.appendChild(textDiv);
+                            card.appendChild(delBtn);
                             
                             card.onclick = () => renderSavedStory(story);
                             
@@ -927,60 +1211,30 @@
         }
 
         function renderSavedStory(story) {
-            currentStoryTitle = story.title || "마법의 동화책";
-            currentStoryParagraphs = story.story_paragraphs || [];
-            charImageSrc = story.image_path;
-            
-            // 저장된 데이터에는 tts_script가 없으므로 문단으로 가짜 스크립트를 만듭니다.
-            currentTtsScript = currentStoryParagraphs.map(p => ({
-                line: p,
-                tone: "따뜻한"
-            }));
-            
-            if (ttsAudioPlayer) {
-                ttsAudioPlayer.pause();
-                ttsAudioPlayer = null;
-            }
-            ttsPlaying = false;
-            const ttsBtn = document.getElementById("ttsButton");
-            if(ttsBtn) ttsBtn.innerText = "🔊 동화 당장 읽기!";
-            
-            document.getElementById('storyTitle').innerText = currentStoryTitle;
-            
-            const sImg = document.getElementById('storyImage');
-            if(charImageSrc) {
-                sImg.src = charImageSrc;
-                sImg.style.display = 'block';
-            } else {
-                sImg.style.display = 'none';
-            }
+            // 보관함에서 볼 때는 기존 생성 상태 초기화
+            isTaskPending = false;
+            pendingTaskType = "none";
+            updateFloatingStatus();
 
-            const contentDiv = document.getElementById('storyContent');
-            contentDiv.innerHTML = "";
+            const mockData = {
+                title: story.title || "마법의 동화책",
+                story_paragraphs: story.story_paragraphs || [],
+                page_audios: story.page_audios || [],
+                page_images: story.page_images || Array(story.story_paragraphs.length).fill(story.image_path)
+            };
             
-            if (story.story_paragraphs) {
-                story.story_paragraphs.forEach(para => {
-                    const p = document.createElement("div");
-                    p.className = "story-paragraph";
-                    p.innerText = para;
-                    contentDiv.appendChild(p);
-                });
-            }
-
-            // 보관함에서 본 동화는 이어쓰기가 없으므로 숨김
-            document.getElementById('storyChoices').style.display = 'none';
-            document.getElementById('saveBtnContainer').style.display = 'none';
-
-            // 대신 보관함으로 돌아가기 버튼 추가
-            const backBtn = document.createElement('button');
-            backBtn.className = "btn-secondary btn-primary wobble";
-            backBtn.style.marginTop = "20px";
-            backBtn.innerText = "📚 보관함으로 돌아가기";
-            backBtn.onclick = () => showScreen('screen-library');
-            contentDiv.appendChild(backBtn);
-
-            showScreen('screen-story');
+            renderBook(mockData);
         }
+
+        // --- renderBook 호출 이후 상태 완료 로직 추가 ---
+        const originalRenderBook = renderBook;
+        renderBook = function(data) {
+            isTaskPending = false;
+            pendingTaskType = "complete";
+            lastGeneratedStory = data; // 결과 저장
+            updateFloatingStatus("📕 동화 완성! (클릭)");
+            originalRenderBook(data);
+        };
     </script>
 </body>
 </html>

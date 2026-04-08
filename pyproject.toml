@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "clip",
+    "config>=0.5.1",
+    "dataset>=1.6.2",
     "easyocr>=1.7.2",
     "einops>=0.8.2",
     "elevenlabs>=2.40.0",
@@ -14,6 +16,7 @@ dependencies = [
     "google-cloud-vision>=3.12.1",
     "google-genai>=1.68.0",
     "jupyter>=1.1.1",
+    "kornia>=0.8.2",
     "librosa>=0.11.0",
     "mediapipe==0.10.14",
     "numpy>=2.4.3",

@@ -63,14 +63,14 @@ def build_common_story_rules() -> str:
     return """
 [공통 규칙]
 - 반드시 JSON만 반환한다. 마크다운, 코드블록, 설명문은 금지한다.
-- JSON 키는 정확히 다음 4개만 사용한다:
-  title, story_paragraphs, tts_script, choices
+- JSON 키는 정확히 다음 3개만 사용한다:
+  title, story_paragraphs, tts_script
+- choices는 사용하지 않으므로 포함하지 않거나 빈 배열([])로 반환한다.
 - 주인공은 character_sheet의 기존 캐릭터 한 명만 사용한다.
 - 캐릭터의 name, original_object, job, personality, goal 정보를 이야기 안에 자연스럽게 반영한다.
 - 대상 독자는 5세에서 7세 아동이다.
-- story_paragraphs는 정확히 3개 문단이어야 한다.
-- 문단 순서는 도입, 전개, 마무리다.
-- 각 문단은 200자 이하의 쉬운 한국어로 작성한다.
+- story_paragraphs는 정확히 5개 문단(페이지)이어야 한다.
+- 각 문단은 2~3줄(약 60~100자)의 쉬운 한국어로 작성하여 가독성을 높인다.
 - 이야기 전체에는 핵심 사건을 최대 2개까지만 넣는다.
 - 어렵거나 추상적인 표현, 긴 문장은 피한다.
 - title은 짧고 분명하게 쓴다.
@@ -79,11 +79,6 @@ def build_common_story_rules() -> str:
 - tts_script는 이야기 처음부터 끝까지 빠짐없이 덮어야 한다.
 - tts_script의 tone은 동화 스타일명이 아니라 낭독 방식이어야 한다.
 - 예시 tone: 또박또박, 신나게, 조용하게, 비밀스럽게, 다정하게, 긴장감 있게
-- 장면이 바뀌면 tts_script의 tone도 적절히 바꾼다.
-- choices는 정확히 2개여야 한다.
-- 각 choice 항목은 정확히 id, text 키만 가진다.
-- choice id는 snake_case 영어로 작성한다.
-- choice text는 아이가 이야기 끝에서 쉽게 고를 수 있게 짧고 분명하게 쓴다.
 """.strip()
 
 
@@ -112,7 +107,6 @@ def build_warm_story_style(character_sheet: dict[str, Any], extra_prompt: str = 
 - 배경은 집, 마을, 공원, 해질녘 길처럼 편안한 공간을 우선 활용한다.
 - 사건은 놀라움보다 정서적 공감이 잘 느껴지게 구성한다.
 - 마지막은 아이가 마음이 편안해지는 결말로 마무리한다.
-- choices도 다정한 다음 행동처럼 느껴지게 만든다.
 
 [추가 요청]
 {normalize_extra_prompt(extra_prompt)}
@@ -132,7 +126,6 @@ def build_adventure_story_style(character_sheet: dict[str, Any], extra_prompt: s
 - 위험을 과하게 키우지 말고, 아이가 즐겁게 따라갈 수 있는 수준의 긴장감만 준다.
 - 주인공이 자신의 장점으로 문제를 해결하는 장면을 꼭 넣는다.
 - 마지막은 성취감과 다음 탐험의 기대가 남도록 마무리한다.
-- choices도 탐험을 이어 가는 선택처럼 보이게 만든다.
 
 [추가 요청]
 {normalize_extra_prompt(extra_prompt)}
@@ -152,7 +145,6 @@ def build_lesson_story_style(character_sheet: dict[str, Any], extra_prompt: str 
 - 교훈은 문장으로 직접 설명하기보다 행동과 결과로 이해되게 만든다.
 - 주인공이 작은 실수나 고민을 겪고 스스로 더 나은 선택을 하게 만든다.
 - 마지막은 뿌듯함과 배움이 함께 남도록 마무리한다.
-- choices도 배운 점을 이어 가거나 실천해 보는 방향으로 만든다.
 
 [추가 요청]
 {normalize_extra_prompt(extra_prompt)}
@@ -194,9 +186,9 @@ def story_generation_prompt(
 {style_guide}
 
 [출력 점검]
-- story_paragraphs, tts_script, choices가 서로 같은 내용을 가리키도록 일관성을 맞춘다.
+- story_paragraphs, tts_script가 서로 같은 내용을 가리키도록 일관성을 맞춘다.
 - 캐릭터 이름이 이야기나 TTS에 반드시 드러나야 한다.
-- 이야기 끝을 읽은 뒤 아이가 바로 choices를 고르고 싶어지게 만든다.
+- 이야기가 끝났을 때 아이가 성취감을 느끼거나 따뜻한 여운을 가질 수 있게 만든다.
 """.strip()
 
 

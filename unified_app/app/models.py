@@ -98,7 +98,7 @@ class StoryPackageResponse(BaseModel):
     title: str
     story_paragraphs: list[str]
     tts_script: list[TtsScriptLine]
-    choices: list[StoryChoice]
+    choices: list[StoryChoice] = Field(default_factory=list)
 
     @field_validator("title")
     @classmethod
@@ -114,11 +114,13 @@ class StoryPackageResponse(BaseModel):
         cleaned = [str(item).strip() for item in value if str(item).strip()]
         if not cleaned:
             raise ValueError("Story must contain at least one paragraph.")
-        if len(cleaned) > 5:  # 약간 완화
-            raise ValueError("Story must contain at most 5 paragraphs.")
+        # 5페이지 동화책 형식: 최대 5개 문단
+        if len(cleaned) > 5:
+            raise ValueError("Story must contain at most 5 paragraphs (one per page).")
         for paragraph in cleaned:
-            if len(paragraph) > 400:  # 200자는 너무 짧아 LLM이 초과하기 쉽습니다
-                raise ValueError(f"Each story paragraph must be 400 characters or fewer (Got {len(paragraph)}).")
+            # 페이지당 2~3줄 분량: 최대 300자
+            if len(paragraph) > 300:
+                raise ValueError(f"Each story paragraph must be 300 characters or fewer (Got {len(paragraph)}).")
         return cleaned
 
     @field_validator("tts_script")
@@ -131,8 +133,9 @@ class StoryPackageResponse(BaseModel):
     @field_validator("choices")
     @classmethod
     def _validate_choices(cls, value: list[StoryChoice]) -> list[StoryChoice]:
-        if len(value) != 2:
-            raise ValueError("Choices must contain exactly 2 items.")
+        # 5페이지 동화책 형식에서는 선택지가 선택 사항 (0~2개)
+        if len(value) > 2:
+            raise ValueError("Choices must contain at most 2 items.")
         return value
 
 
