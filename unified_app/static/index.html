@@ -450,9 +450,9 @@
         <p style="font-size: 24px; color: #118AB2; font-weight: bold; margin-top: -10px; margin-bottom: 40px; text-shadow: 1px 1px 0 #fff;">
             사진 한 장으로 뚝딱!<br>우리 아이 맞춤형 동화책
         </p>
-        <button class="btn-primary wobble" onclick="showScreen('screen-input')">🚀 모험 시작하기!</button>
-        <button class="btn-secondary" onclick="showScreen('screen-voice-clone')" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff; background: #FFD166; box-shadow: 0 8px 0 #EAB308;">🎙️ 내 목소리 관리</button>
-        <button class="btn-secondary" onclick="loadLibrary()" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff;">📚 내 보관함 가기</button>
+        <button id="btnStartAdventure" class="btn-primary wobble" onclick="showScreen('screen-input')">🚀 모험 시작하기!</button>
+        <button id="btnVoiceCloneHome" class="btn-secondary" onclick="showScreen('screen-voice-clone')" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff; background: #FFD166; box-shadow: 0 8px 0 #EAB308;">🎙️ 내 목소리 관리</button>
+        <button id="btnLibraryHome" class="btn-secondary" onclick="loadLibrary()" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff;">📚 내 보관함 가기</button>
     </div>
 
     <!-- 보관함 화면 -->
@@ -658,11 +658,34 @@
         // --- 작업 관리 유틸리티 ---
         function updateFloatingStatus(msg) {
             const badge = document.getElementById('floatingStatus');
+            const btnStart = document.getElementById('btnStartAdventure');
+            const btnVoice = document.getElementById('btnVoiceCloneHome');
+            const btnLibrary = document.getElementById('btnLibraryHome');
+
             if (isTaskPending || pendingTaskType === "complete") {
                 badge.style.display = 'block';
                 if (msg) badge.textContent = msg;
+
+                // 홈 화면 버튼 상태 변경: 모험 재개로 전환 및 목소리 관리만 숨김
+                if (btnStart) {
+                    btnStart.textContent = "🚀 진행 중인 모험으로!";
+                    btnStart.onclick = () => resumePendingTask();
+                    btnStart.classList.remove('wobble');
+                }
+                if (btnVoice) btnVoice.style.display = 'none';
+                // 보관함은 작업 중에도 접근 가능하도록 활성 상태 유지
+                if (btnLibrary) btnLibrary.style.display = 'block';
             } else {
                 badge.style.display = 'none';
+
+                // 원래 상태로 복구
+                if (btnStart) {
+                    btnStart.textContent = "🚀 모험 시작하기!";
+                    btnStart.onclick = () => showScreen('screen-input');
+                    btnStart.classList.add('wobble');
+                }
+                if (btnVoice) btnVoice.style.display = 'block';
+                if (btnLibrary) btnLibrary.style.display = 'block';
             }
         }
 
@@ -1396,11 +1419,6 @@
 
         async function renderSavedStory(storySummary) {
             try {
-                // 보관함에서 볼 때는 기존 생성 상태 초기화
-                isTaskPending = false;
-                pendingTaskType = "none";
-                updateFloatingStatus();
-
                 const filename = storySummary.filename;
                 if (!filename) throw new Error("파일 정보가 없습니다.");
 

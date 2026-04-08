@@ -35,21 +35,22 @@ class VCRequest(BaseModel):
     voice_id: str = 'default_women'
     data: List[VCContent]
 
-# 2. 모델 로드 및 설정 ------------------------------
-print("--- Loading Qwen-TTS CustomVoice Model (상시 로드) ---")
+# 2. 모델 로드 및 설정 (초점: 상시 CPU 대기) ------------------------------
+print("--- Loading Qwen-TTS CustomVoice Model (Offload Mode) ---")
 
-# ✅ 메인 모델 (1.7B VoiceDesign) — 상시 로드
+# ✅ 메인 모델 (1.7B VoiceDesign) — 초기 CPU 로딩
 model = Qwen3TTSModel.from_pretrained(
     "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
-    device_map=device,
+    device_map="cpu",
     dtype=torch.bfloat16,
     attn_implementation="eager",
+    local_files_only=True
 )
 
-# ✅ model_base — 온디맨드 (평소엔 None)
+# ✅ model_base — 온디맨드 로드용 추적
 model_base = None
 
-print(f"--- Model Loaded on {device} ---")
+print(f"--- Audio Model Loaded on CPU (Initial) ---")
 
 # 3. 함수 설정 -------------------------------------
 ROOT_DIR = Path(__file__).resolve().parent
@@ -62,7 +63,7 @@ def log_gpu_memory(tag=""):
     if torch.cuda.is_available():
         allocated = torch.cuda.memory_allocated() / 1024**2
         reserved  = torch.cuda.memory_reserved()  / 1024**2
-        print(f"[GPU {tag}] allocated: {allocated:.1f}MB / reserved: {reserved:.1f}MB")
+        print(f"[Audio GPU {tag}] Allocated: {allocated:.1f}MB, Reserved: {reserved:.1f}MB")
 
 
 def normalize_volume(audio, target_db=-20.0):
@@ -77,58 +78,54 @@ def normalize_volume(audio, target_db=-20.0):
 
 
 def load_model_base():
-    """model_base 온디맨드 로드 — model을 먼저 CPU로 오프로드"""
+    """model_base(0.6B) 온디맨드 로드. GPU 공간 확보 선행."""
     global model_base, model
 
-    # ✅ 상시 모델을 CPU로 내려서 VRAM 확보
+    # ✅ 1.7B 모델이 있다면 확실하게 CPU로 내림 (에러 방지를 위해 속성 체크 간소화)
     if model is not None:
-        print("--- model을 CPU로 오프로드 ---")
-        model.device = 'cpu'
-        gc.collect()
-        torch.cuda.empty_cache()
-        log_gpu_memory("model CPU 오프로드 후")
+        try:
+            print("--- Offloading model (1.7B) to CPU to make room for base model ---")
+            model.to('cpu')
+        except Exception as e:
+            print(f"[Warning] Failed to offload model: {e}")
+    
+    gc.collect()
+    torch.cuda.empty_cache()
 
     if model_base is None:
-        print("--- Loading model_base (0.6B Base) ---")
+        print("--- Loading model_base (0.6B Base) to GPU ---")
         model_base = Qwen3TTSModel.from_pretrained(
             "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
             device_map=device,
             dtype=torch.bfloat16,
             attn_implementation="eager",
+            local_files_only=True
         )
-        log_gpu_memory("model_base 로드 후")
+        log_gpu_memory("model_base Load")
 
 
 def unload_model_base():
-    """model_base 해제 후 model을 다시 GPU로 복귀"""
-    global model_base, model
-
+    """model_base 사용 완료 후 캐시 정리. (주 모델 복귀는 추론 시에만 수행)"""
+    global model_base
     if model_base is not None:
-        print("--- model_base 해제 ---")
+        print("--- Unloading model_base ---")
         del model_base
         model_base = None
         gc.collect()
         torch.cuda.empty_cache()
-        log_gpu_memory("model_base 해제 후")
-
-    # ✅ 상시 모델 다시 GPU로 복귀
-    if model is not None:
-        print("--- model을 GPU로 복귀 ---")
-        model.device = device
-        log_gpu_memory("model GPU 복귀 후")
+        log_gpu_memory("model_base Unload")
 
 
 # 4. 엔드포인트 -------------------------------------
 
 
 def _generate_single_audio_internal(text: str, voice_id: str):
-    """내부용: 단일 텍스트 TTS 생성 로직 (모델 자동 로드/언로드 미포함)"""
+    """내부용: 단일 텍스트 TTS 생성 로직"""
     ref_path = AUDIO_BASE_PATH / f"{voice_id}.wav"
     if not os.path.exists(ref_path):
-        # 기본 여성 목소리로 폴백
         ref_path = AUDIO_BASE_PATH / "default_parents.wav"
         if not os.path.exists(ref_path):
-            raise FileNotFoundError(f"Voice sample {voice_id} or default_women not found.")
+            raise FileNotFoundError(f"Voice sample {voice_id} not found.")
 
     with torch.no_grad():
         wavs, sr = model_base.generate_voice_clone(
@@ -139,10 +136,7 @@ def _generate_single_audio_internal(text: str, voice_id: str):
         )
 
     raw = wavs[0]
-    if hasattr(raw, 'cpu'):
-        audio_data = raw.cpu().float().numpy()
-    else:
-        audio_data = np.array(raw, dtype=np.float32)
+    audio_data = raw.cpu().float().numpy() if hasattr(raw, 'cpu') else np.array(raw, dtype=np.float32)
 
     output_filename = f"output_parents_{uuid.uuid4()}.wav"
     output_path = AUDIO_BASE_PATH / output_filename
@@ -151,7 +145,7 @@ def _generate_single_audio_internal(text: str, voice_id: str):
 
 
 def generate_book_audios(paragraphs: List[str], voice_id: str = "default_women") -> List[str]:
-    """main.py 전용: 여러 문단의 오디오를 한 번에 생성 호출"""
+    """부모 목소리 일괄 생성 호출"""
     urls = []
     try:
         load_model_base()
@@ -163,7 +157,6 @@ def generate_book_audios(paragraphs: List[str], voice_id: str = "default_women")
         unload_model_base()
 
 
-# 부모 목소리 복제 TTS (온디맨드)
 @router.post("/generate_audio")
 def generate_audio(request: AudioRequest):
     try:
@@ -176,32 +169,35 @@ def generate_audio(request: AudioRequest):
         unload_model_base()
 
 
-# 감정 표현 TTS (상시 로드 모델 사용)
 @router.post("/generate_audio_v2")
 def generate_audio_v2(request: VCRequest):
+    global model
     ref_path = AUDIO_BASE_PATH / f"{request.voice_id}.wav"
-
     if not os.path.exists(ref_path):
         raise HTTPException(status_code=404, detail="해당 목소리 샘플을 찾을 수 없습니다.")
 
-    # finally 블록에서 접근할 수 있도록 변수 초기화
     all_audio_segments = []
     combined = None
 
     try:
+        # ✅ 추론 전에 다른 모델(model_base)이 있다면 내리고 GPU 공간 확보
+        unload_model_base()
+
+        print("--- Moving model (1.7B) to GPU ---")
+        try:
+            model.to(device)
+        except Exception as e:
+            print(f"[Warning] Failed to move model to GPU: {e}")
+
+        log_gpu_memory("Before generate_audio_v2 Loop")
+
         fairy_tale_script = request.data
-        print(fairy_tale_script)
+        final_sr = 24000
+        PAUSE_DURATION = 0.8  
+        TARGET_DB = -20.0       
 
-        final_sr = 24000 # 기본 샘플 레이트 예비 설정
-        PAUSE_DURATION = 0.8  # 문장 사이 무음 길이 (초) — 취향껏 조절
-        TARGET_DB = -20.0       #목표 볼륨 (dB)
-
-        ref_audio_path = str(ref_path)
-
-        # 1. 루프 최적화: results 딕셔너리를 쓰지 않고 즉시 처리하여 GPU 부담 감소
         for i, line in enumerate(fairy_tale_script):
             with torch.no_grad():
-                # 음성 생성
                 wavs, sr = model.generate_custom_voice(
                     text=line.text,
                     language="korean",
@@ -209,13 +205,8 @@ def generate_audio_v2(request: VCRequest):
                     instruct=line.instruct
                 )
             final_sr = sr
-
-            # [중요] GPU 텐서를 즉시 CPU Numpy 배열로 변환하여 GPU 메모리 해제
             audio_cpu = wavs[0]
-
-            # 메모리 절약을 위해 원본 wavs 삭제
             del wavs
-
             normalized = normalize_volume(audio_cpu, target_db=TARGET_DB)
             all_audio_segments.append(normalized)
 
@@ -223,70 +214,54 @@ def generate_audio_v2(request: VCRequest):
                 silence = np.zeros(int(final_sr * PAUSE_DURATION))
                 all_audio_segments.append(silence)
         
-        # 매 문장 생성 후 캐시를 비워주면 더 안정적입니다 (속도는 약간 저하 가능)
-        #torch.cuda.empty_cache()
-
-        # 2. 오디오 합치기
         if all_audio_segments:
             combined = np.concatenate(all_audio_segments)
-            
             output_filename = f"output_{uuid.uuid4()}.wav"
             output_path = AUDIO_BASE_PATH / output_filename
             sf.write(str(output_path), combined, final_sr)
-
             return {"status": "success", "url": f"/static/outputs/audios/{output_filename}"}
         else:
             raise ValueError("생성된 오디오 데이터가 없습니다.")
 
     except Exception as e:
-        print(f"Error detail: {traceback.format_exc()}") # 에러 위치 로그 출력
+        print(f"Error detail: {traceback.format_exc()}")
         raise HTTPException(status_code=500, detail=str(e))
 
     finally:
-        # 3. 최종 메모리 정리
-        # 리스트 내의 큰 넘파이 배열들 명시적 삭제
-        if 'all_audio_segments' in locals():
-            del all_audio_segments
-        if 'combined' in locals():
-            del combined
-            
-        gc.collect()           # Python 가비지 컬렉션 강제 실행
-        torch.cuda.empty_cache() # GPU 캐시 비우기
-        log_gpu_memory("generate_audio_v2 완료 후 정리")
+        # ✅ 작업 끝난 후 메인 모델 즉시 CPU로 반환
+        print("--- Offloading model (1.7B) to CPU ---")
+        model.to('cpu')
+        
+        if 'all_audio_segments' in locals(): del all_audio_segments
+        if 'combined' in locals(): del combined
+        gc.collect()
+        torch.cuda.empty_cache()
+        log_gpu_memory("After generate_audio_v2 Cleanup")
 
 
-# 목소리 목록 조회
 @router.get("/list-voices")
 async def list_voices():
-    """저장된 모든 .wav 목소리 목록을 반환"""
     try:
         voices = []
-        # 기본 목소리 추가 (병합된 코드의 default_parents 우선)
         if (AUDIO_BASE_PATH / "default_parents.wav").exists():
             voices.append({"id": "default_parents", "name": "기본 목소리 (부모)"})
         elif (AUDIO_BASE_PATH / "default_women.wav").exists():
             voices.append({"id": "default_women", "name": "기본 목소리 (여성)"})
         
-        # 사용자 녹음 목소리 스캔
         files = sorted(AUDIO_BASE_PATH.glob("user_*.wav"), key=lambda x: os.path.getmtime(x), reverse=True)
         for file in files:
             voice_name = file.stem.replace("user_", "")
             voices.append({"id": file.stem, "name": f"{voice_name}의 목소리"})
-            
         return {"status": "success", "voices": voices}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 목소리 저장 기능
 @router.post("/save-reference-audio")
 def save_reference_audio(voice_id: str = Form(...), file: UploadFile = File(...)):
-    """프론트엔드에서 녹음한 사용자 목소리를 user_이름.wav 형식으로 저장"""
     try:
-        # 파일명 안전하게 처리 (user_ 접두사 강제)
         clean_id = voice_id.replace("user_", "")
         final_id = f"user_{clean_id}"
-        
         content = file.file.read()
         save_path = AUDIO_BASE_PATH / f"{final_id}.wav"
         with open(save_path, "wb") as f:
@@ -296,23 +271,16 @@ def save_reference_audio(voice_id: str = Form(...), file: UploadFile = File(...)
         raise HTTPException(status_code=500, detail=str(e))
 
 
-# 목소리 삭제 기능 추가
 @router.delete("/delete-voice/{voice_id}")
 async def delete_voice(voice_id: str):
-    """특정 목소리 파일을 삭제합니다."""
     try:
-        # 보안을 위해 경로 조작 방지
         if ".." in voice_id or "/" in voice_id or "\\" in voice_id:
             raise HTTPException(status_code=400, detail="Invalid voice ID")
-            
         file_path = AUDIO_BASE_PATH / f"{voice_id}.wav"
         if not file_path.exists():
             raise HTTPException(status_code=404, detail="Voice file not found")
-            
-        # 기본 목소리 삭제 방지
         if voice_id in ["default_parents", "default_women"]:
             raise HTTPException(status_code=403, detail="Cannot delete default voices")
-
         os.remove(file_path)
         return {"status": "success", "message": f"{voice_id} 삭제 완료"}
     except Exception as e:
