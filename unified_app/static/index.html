@@ -1251,9 +1251,6 @@
             }
         }
 
-        // 사운드 효과 초기화 (더 부드러운 책장 넘기는 소리로 교체)
-        const pageFlipSound = new Audio("https://assets.mixkit.co/active_storage/sfx/1102/1102-preview.mp3");
-        pageFlipSound.volume = 0.3; // 소리 크기를 30%로 조정 (쾅 소리 방지)
 
         function renderBook(data) {
             currentStoryTitle = data.title || "마법의 동화책";
@@ -1313,27 +1310,21 @@
 
         function nextPage() {
             if (currentPageIndex < currentStoryParagraphs.length - 1) {
-                // 사운드 재생
-                pageFlipSound.currentTime = 0;
-                pageFlipSound.play().catch(e => console.warn("SFX 재생 실패:", e));
-
                 currentPageIndex++;
                 updateBookUI();
                 playPageAudio(currentPageIndex);
             }
         }
 
+
         function prevPage() {
             if (currentPageIndex > 0) {
-                // 사운드 재생
-                pageFlipSound.currentTime = 0;
-                pageFlipSound.play().catch(e => console.warn("SFX 재생 실패:", e));
-
                 currentPageIndex--;
                 updateBookUI();
                 playPageAudio(currentPageIndex);
             }
         }
+
 
         function playPageAudio(index) {
             if (index === undefined) index = currentPageIndex;

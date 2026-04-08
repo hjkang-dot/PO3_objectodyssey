@@ -66,15 +66,27 @@ def log_gpu_memory(tag=""):
         print(f"[Audio GPU {tag}] Allocated: {allocated:.1f}MB, Reserved: {reserved:.1f}MB")
 
 
-def normalize_volume(audio, target_db=-20.0):
-    """RMS 기준으로 목표 dB에 맞게 볼륨 정규화"""
+def normalize_volume(audio, target_db=-20.0, max_gain=5.0, min_rms=0.005):
+    """
+    RMS 기준으로 목표 dB에 맞게 볼륨 정규화.
+    - max_gain: 배경 노이즈가 과도하게 커지는 것을 방지하기 위한 최대 증폭 배수
+    - min_rms: 이 값보다 작은 소리는 노이즈로 간주하여 정규화하지 않음
+    """
     rms = np.sqrt(np.mean(audio ** 2))
-    if rms == 0:
+    
+    # 너무 작은 소리(노이즈)는 정규화 건너뜀
+    if rms < min_rms:
         return audio
+        
     target_rms = 10 ** (target_db / 20)
     gain = target_rms / rms
-    normalized = audio * gain
+    
+    # 과도한 증폭 제한 (부스럭거리는 소리 방지)
+    actual_gain = min(gain, max_gain)
+    
+    normalized = audio * actual_gain
     return np.clip(normalized, -1.0, 1.0)
+
 
 
 def load_model_base():
