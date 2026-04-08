@@ -339,39 +339,44 @@ async def save_story(payload: SaveStoryPayload) -> dict:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 @app.get("/get-stories")
-async def get_stories() -> dict:
-    """보관함 목록을 위한 요약 정보(메타데이터)만 반환한다."""
+def get_stories():
+    """
+    저장된 모든 동화 목록을 반환합니다. 
+    성능 최적화: 디렉토리 정보를 효율적으로 읽어 I/O 부하를 줄입니다.
+    """
     try:
         save_dir = ROOT_DIR / "saved_stories"
         if not save_dir.exists():
             return {"status": "success", "stories": []}
-            
-        stories = []
-        # 각 동화 폴더 내의 story.json 파일 찾기
-        # saved_stories/*/story.json 패턴 사용
-        story_files = list(save_dir.glob("*/story.json"))
-        # 최신 수정 시간 순으로 정렬 (폴더 mtime 기준이 더 정확할 수 있음)
-        story_files.sort(key=lambda p: p.parent.stat().st_mtime, reverse=True)
         
-        for file_path in story_files:
-            try:
-                folder_name = file_path.parent.name
-                with open(file_path, "r", encoding="utf-8") as f:
-                    data = json.load(f)
-                    summary = {
-                        "title": data.get("title", "제목 없음"),
-                        "character_name": data.get("character_name", "주인공"),
-                        "image_path": data.get("image_path"),
-                        "filename": folder_name, # 폴더 이름을 ID로 사용
-                        "created_at": datetime.fromtimestamp(file_path.parent.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
-                    }
-                    stories.append(summary)
-            except Exception as e:
-                print(f"[WARN] 스토리 읽기 실패 ({file_path}): {e}")
-                
+        stories = []
+        # scandir로 디렉토리를 순회하며 story.json만 효율적으로 확인
+        for entry in os.scandir(save_dir):
+            if entry.is_dir():
+                story_file = Path(entry.path) / "story.json"
+                if story_file.exists():
+                    try:
+                        # 파일이 많아지면 메타데이터를 별도 index로 관리하는 것을 추천
+                        with open(story_file, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                            
+                        stories.append({
+                            "title": data.get("title", "제목 없음"),
+                            "character_name": data.get("character_name", "주인공"),
+                            "image_path": data.get("image_path"),
+                            "filename": entry.name,
+                            "mtime": entry.stat().st_mtime
+                        })
+                    except Exception as e:
+                        print(f"[WARN] 스토리 읽기 실패 ({story_file}): {e}")
+        
+        # 최신 수정 시간 순으로 정렬
+        stories.sort(key=lambda x: x["mtime"], reverse=True)
+            
         return {"status": "success", "stories": stories}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
 
 @app.get("/get-story/{filename}")
 async def get_story_detail(filename: str) -> dict:

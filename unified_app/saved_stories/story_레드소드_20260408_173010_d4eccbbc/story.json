@@ -1,0 +1,76 @@
+{
+  "title": "모험하는 레드 소드",
+  "character_name": "레드소드",
+  "image_path": "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/active_style_Use_the_attached_referen_20260408_172601_024156_5092_1024x1024.png",
+  "story_paragraphs": [
+    "레드 소드는 돌돌 행성에서 온 용감한 모험가예요. 오늘은 새로운 친구를 만나고 싶어 공원을 탐험하기로 했어요.",
+    "공원에 도착한 레드 소드는 친구가 되어줄 친구를 찾기 시작했어요. 놀이터에서 아이들이 신나는 웃음을 터뜨리는 소리가 들렸어요.",
+    "아이들은 즐겁게 노는 모습을 보며 레드 소드는 용기가 생겼어요. 다가가서 함께 놀자는 장난을 쳤답니다. 아이들은 깜짝 놀랐어요!",
+    "아이들과 함께 놀며 레드 소드는 새로운 친구들과 멋진 시간을 보냈어요. 함께 뛰고 웃으며 행복한 순간을 만들었답니다.",
+    "모험이 끝난 후, 레드 소드는 친구들과 약속했어요. 언제든지 다시 만나서 놀자고요. 마음이 따뜻해진 레드 소드는 집으로 돌아갔어요."
+  ],
+  "page_images": [
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/active_style_Use_the_attached_referen_20260408_172601_024156_5092_1024x1024.png",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/active_style_Use_the_attached_referen_20260408_172601_024156_5092_1024x1024.png",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/active_style_Use_the_attached_referen_20260408_172601_024156_5092_1024x1024.png",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/active_style_Use_the_attached_referen_20260408_172601_024156_5092_1024x1024.png",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/active_style_Use_the_attached_referen_20260408_172601_024156_5092_1024x1024.png"
+  ],
+  "page_audios": [
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/output_parents_0a117a3a-df5d-4279-ad2e-b0f935908b68.wav",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/output_parents_cb561c16-6064-41a5-b852-d3be97b92ece.wav",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/output_parents_ea3d8940-c16e-478a-9a04-377fde279568.wav",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/output_parents_153332e3-2835-423c-ad5b-9942d63102cc.wav",
+    "/stories/story_레드소드_20260408_173010_d4eccbbc/assets/output_parents_47a6c668-581b-4b0d-ae22-fb48a0c32800.wav"
+  ],
+  "tts_script": [
+    {
+      "line": "레드 소드는 돌돌 행성에서 온 용감한 모험가예요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "오늘은 새로운 친구를 만나고 싶어 공원을 탐험하기로 했어요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "공원에 도착한 레드 소드는 친구가 되어줄 친구를 찾기 시작했어요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "놀이터에서 아이들이 신나는 웃음을 터뜨리는 소리가 들렸어요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "아이들은 즐겁게 노는 모습을 보며 레드 소드는 용기가 생겼어요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "다가가서 함께 놀자는 장난을 쳤답니다.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "아이들은 깜짝 놀랐어요!",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "아이들과 함께 놀며 레드 소드는 새로운 친구들과 멋진 시간을 보냈어요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "함께 뛰고 웃으며 행복한 순간을 만들었답니다.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "모험이 끝난 후, 레드 소드는 친구들과 약속했어요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "언제든지 다시 만나서 놀자고요.",
+      "tone": "따뜻한"
+    },
+    {
+      "line": "마음이 따뜻해진 레드 소드는 집으로 돌아갔어요.",
+      "tone": "따뜻한"
+    }
+  ]
+}
