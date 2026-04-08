@@ -83,7 +83,7 @@ def load_model_base():
     # ✅ 상시 모델을 CPU로 내려서 VRAM 확보
     if model is not None:
         print("--- model을 CPU로 오프로드 ---")
-        model.to("cpu")
+        model.device = 'cpu'
         gc.collect()
         torch.cuda.empty_cache()
         log_gpu_memory("model CPU 오프로드 후")
@@ -114,7 +114,7 @@ def unload_model_base():
     # ✅ 상시 모델 다시 GPU로 복귀
     if model is not None:
         print("--- model을 GPU로 복귀 ---")
-        model.to(device)
+        model.device = device
         log_gpu_memory("model GPU 복귀 후")
 
 
@@ -126,7 +126,7 @@ def _generate_single_audio_internal(text: str, voice_id: str):
     ref_path = AUDIO_BASE_PATH / f"{voice_id}.wav"
     if not os.path.exists(ref_path):
         # 기본 여성 목소리로 폴백
-        ref_path = AUDIO_BASE_PATH / "default_women.wav"
+        ref_path = AUDIO_BASE_PATH / "default_parents.wav"
         if not os.path.exists(ref_path):
             raise FileNotFoundError(f"Voice sample {voice_id} or default_women not found.")
 
@@ -144,7 +144,7 @@ def _generate_single_audio_internal(text: str, voice_id: str):
     else:
         audio_data = np.array(raw, dtype=np.float32)
 
-    output_filename = f"output_{uuid.uuid4()}.wav"
+    output_filename = f"output_parents_{uuid.uuid4()}.wav"
     output_path = AUDIO_BASE_PATH / output_filename
     sf.write(str(output_path), audio_data, sr)
     return f"/static/outputs/audios/{output_filename}"
