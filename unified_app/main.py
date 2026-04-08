@@ -4,6 +4,7 @@ import uuid
 import os
 from pathlib import Path
 from datetime import datetime
+import shutil
 import cv2
 import numpy as np
 from dotenv import load_dotenv
@@ -75,14 +76,16 @@ app.include_router(audio_router)
 
 # 정적 파일 마운트
 app.mount("/static", StaticFiles(directory=str(ROOT_DIR / "static")), name="static")
+app.mount("/stories", StaticFiles(directory=str(SAVED_STORIES_DIR)), name="stories")
 
 @app.get("/")
 async def serve_frontend():
     return FileResponse(str(ROOT_DIR / "static" / "index.html"))
 
 @app.post("/extract")
-async def extract_object(file: UploadFile = File(...)) -> dict[str, str]:
-    contents = await file.read()
+def extract_object(file: UploadFile = File(...)) -> dict[str, str]:
+    # 동기 방식으로 파일 읽기 (Thread pool에서 실행됨)
+    contents = file.file.read()
     nparray = np.frombuffer(contents, np.uint8)
     img = cv2.imdecode(nparray, cv2.IMREAD_COLOR)
 
@@ -156,7 +159,7 @@ class GenerateBookPayload(BaseModel):
     character_name: Optional[str] = None    # 저장 파일명에 사용
     voice_id: Optional[str] = "default_women"
 @app.post("/generate-book")
-async def generate_book(payload: GenerateBookPayload) -> dict:
+def generate_book(payload: GenerateBookPayload) -> dict:
     """스토리 + TTS 스크립트를 한 번에 생성하고 saved_stories에 자동 저장한다."""
     try:
         print(f"[DEBUG] Generating book with tone: {payload.story_tone}, character: {payload.character_name}")
@@ -179,40 +182,15 @@ async def generate_book(payload: GenerateBookPayload) -> dict:
         print(f"[WARN] TTS 생성 실패: {exc}")
         page_audios = [None] * len(paragraphs)
 
-    # 자동 저장
-    try:
-        save_dir = ROOT_DIR / "saved_stories"
-        save_dir.mkdir(exist_ok=True, parents=True)
-        story_id = str(uuid.uuid4())[:8]
-        now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        char_name = payload.character_name or story_package.get("title", "주인공")[:8]
-        filename = f"story_{char_name}_{now_str}_{story_id}.json"
-        
-        save_payload = {
-            "title": story_package.get("title", ""),
-            "character_name": char_name,
-            "image_path": payload.char_image_path,
-            "story_paragraphs": paragraphs,
-            "page_images": [payload.char_image_path] * len(paragraphs) if payload.char_image_path else None,
-            "page_audios": page_audios,
-            "tts_script": [
-                {"line": item["line"], "tone": item["tone"]}
-                for item in story_package.get("tts_script", [])
-            ],
-        }
-        with open(save_dir / filename, "w", encoding="utf-8") as f:
-            json.dump(save_payload, f, ensure_ascii=False, indent=2)
-        saved_filename = filename
-    except Exception as exc:
-        print(f"[WARN] 자동 저장 실패: {exc}")
-        saved_filename = None
-
     return {
         "status": "success",
-        "title": story_package.get("title", ""),
+        "title": story_package.get("title", "마법의 동화책"),
         "story_paragraphs": paragraphs,
         "page_audios": page_audios,
-        "saved_filename": saved_filename,
+        "page_images": [payload.char_image_path] * len(paragraphs) if payload.char_image_path else [],
+        "tts_script": story_package.get("tts_script", []),
+        "character_name": payload.character_name or "주인공",
+        "char_image_path": payload.char_image_path
     }
 
 
@@ -226,7 +204,7 @@ class GeneratePageImagesPayload(BaseModel):
 
 
 @app.post("/generate-page-images")
-async def generate_page_images(payload: GeneratePageImagesPayload) -> dict:
+def generate_page_images(payload: GeneratePageImagesPayload) -> dict:
     """스토리 문단별로 씬(장면) 일러스트를 생성한다."""
     from unified_app.app.image_flow import (
         build_reference_prompt_seed,
@@ -288,6 +266,7 @@ class SaveStoryPayload(BaseModel):
     image_path: Optional[str] = None
     story_paragraphs: list[str]
     page_images: Optional[List[str]] = None   # 각 페이지 이미지 URL 목록
+    page_audios: Optional[List[str]] = None   # 각 페이지 오디오 URL 목록
     tts_script: Optional[List[dict]] = None   # TTS 스크립트 (저장용)
 
 @app.post("/save-story")
@@ -298,13 +277,64 @@ async def save_story(payload: SaveStoryPayload) -> dict:
         
         story_id = str(uuid.uuid4())[:8]
         now_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"story_{payload.character_name}_{now_str}_{story_id}.json"
+        folder_name = f"story_{payload.character_name}_{now_str}_{story_id}"
         
-        file_path = save_dir / filename
-        with open(file_path, "w", encoding="utf-8") as f:
-            json.dump(payload.model_dump(), f, ensure_ascii=False, indent=2)
+        story_folder = save_dir / folder_name
+        story_folder.mkdir(exist_ok=True, parents=True)
+        assets_folder = story_folder / "assets"
+        assets_folder.mkdir(exist_ok=True)
+
+        def localize_asset(url: Optional[str]) -> Optional[str]:
+            if not url or not isinstance(url, str):
+                return url
             
-        return {"status": "success", "filename": filename}
+            # 이미 처리된 경로나 외부 URL은 건너뜀
+            if url.startswith("/stories/"):
+                return url
+            
+            # 로컬 파일 경로 매핑
+            # 예: /static/outputs/images/foo.png -> static/outputs/images/foo.png
+            # 예: nukki/bar.png -> nukki/bar.png
+            rel_path = url.lstrip("/")
+            if rel_path.startswith("static/"):
+                source_path = ROOT_DIR / rel_path
+            elif rel_path.startswith("nukki/"):
+                source_path = ROOT_DIR / rel_path
+            else:
+                # 기타 상대 경로나 알 수 없는 경우 시도
+                source_path = ROOT_DIR / rel_path
+                if not source_path.exists():
+                    return url # 찾을 수 없으면 유지
+            
+            if source_path.exists() and source_path.is_file():
+                filename = source_path.name
+                target_path = assets_folder / filename
+                shutil.copy2(source_path, target_path)
+                # 새로운 URL 반환
+                return f"/stories/{folder_name}/assets/{filename}"
+            
+            return url
+
+        # 리소스들 복사 및 경로 업데이트
+        updated_payload = payload.model_dump()
+        
+        # 1. 주인공 이미지
+        if payload.image_path:
+            updated_payload["image_path"] = localize_asset(payload.image_path)
+        
+        # 2. 페이지별 이미지들
+        if payload.page_images:
+            updated_payload["page_images"] = [localize_asset(img) for img in payload.page_images]
+            
+        # 3. 페이지별 오디오들
+        if payload.page_audios:
+            updated_payload["page_audios"] = [localize_asset(aud) for aud in payload.page_audios]
+
+        file_path = story_folder / "story.json"
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(updated_payload, f, ensure_ascii=False, indent=2)
+            
+        return {"status": "success", "filename": folder_name}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
@@ -317,24 +347,27 @@ async def get_stories() -> dict:
             return {"status": "success", "stories": []}
             
         stories = []
-        # 최신 파일이 먼저 오도록 정렬 (mtime 기준)
-        json_files = sorted(save_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+        # 각 동화 폴더 내의 story.json 파일 찾기
+        # saved_stories/*/story.json 패턴 사용
+        story_files = list(save_dir.glob("*/story.json"))
+        # 최신 수정 시간 순으로 정렬 (폴더 mtime 기준이 더 정확할 수 있음)
+        story_files.sort(key=lambda p: p.parent.stat().st_mtime, reverse=True)
         
-        for file_path in json_files:
+        for file_path in story_files:
             try:
+                folder_name = file_path.parent.name
                 with open(file_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                    # 요약 정보만 필터링 (메모리 및 네트워크 부하 감소)
                     summary = {
                         "title": data.get("title", "제목 없음"),
                         "character_name": data.get("character_name", "주인공"),
                         "image_path": data.get("image_path"),
-                        "filename": file_path.name,
-                        "created_at": datetime.fromtimestamp(file_path.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+                        "filename": folder_name, # 폴더 이름을 ID로 사용
+                        "created_at": datetime.fromtimestamp(file_path.parent.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
                     }
                     stories.append(summary)
             except Exception as e:
-                print(f"[WARN] 파일 읽기 실패 ({file_path.name}): {e}")
+                print(f"[WARN] 스토리 읽기 실패 ({file_path}): {e}")
                 
         return {"status": "success", "stories": stories}
     except Exception as exc:
@@ -344,7 +377,10 @@ async def get_stories() -> dict:
 async def get_story_detail(filename: str) -> dict:
     """특정 동화의 전체 본문을 상세 조회한다."""
     try:
-        file_path = ROOT_DIR / "saved_stories" / filename
+        # filename은 이제 폴더 이름임
+        story_folder = ROOT_DIR / "saved_stories" / filename
+        file_path = story_folder / "story.json"
+        
         if not file_path.exists():
             raise HTTPException(status_code=404, detail="Story not found")
             
@@ -359,24 +395,13 @@ async def get_story_detail(filename: str) -> dict:
 async def delete_story(filename: str) -> dict:
     """보관함에서 스토리를 삭제한다."""
     try:
-        file_path = ROOT_DIR / "saved_stories" / filename
-        if not file_path.exists():
+        story_folder = ROOT_DIR / "saved_stories" / filename
+        if not story_folder.exists():
             raise HTTPException(status_code=404, detail="Story not found")
         
-        # 파일 내용에서 TTS URL 등을 확인하여 관련 파일도 삭제 시도 (Optional)
-        try:
-            with open(file_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-                tts_url = data.get("tts_url")
-                if tts_url:
-                    # tts_url이 /static/outputs/audios/... 형태인 경우 처리
-                    audio_rel_path = tts_url.lstrip("/")
-                    audio_full_path = ROOT_DIR / audio_rel_path
-                    if audio_full_path.exists():
-                        audio_full_path.unlink()
-        except: pass
-
-        file_path.unlink()
+        # 폴더 전체 삭제
+        shutil.rmtree(story_folder)
+        
         return {"status": "success", "message": f"{filename} 삭제 완료"}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

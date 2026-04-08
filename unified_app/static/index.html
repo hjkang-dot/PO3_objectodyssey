@@ -204,7 +204,7 @@
         }
         /* 플로팅 작업 상태 배지 */
         #floatingStatus {
-            position: fixed; top: 20px; right: 20px; z-index: 10000;
+            position: fixed; bottom: 20px; right: 20px; z-index: 10000;
             background: #FF9F1C; color: white; padding: 12px 20px;
             border-radius: 30px; font-weight: bold; cursor: pointer;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); display: none;
@@ -360,6 +360,25 @@
             border-radius: 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
             text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
         }
+        
+        .btn-tts-replay {
+            background: #FF9F1C;
+            color: #fff;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 20px;
+            font-size: 18px;
+            font-family: 'Jua', sans-serif;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #E27D60;
+            transition: all 0.2s;
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-tts-replay:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #E27D60; }
+        .btn-tts-replay:active { transform: translateY(3px); box-shadow: 0 2px 0 #E27D60; }
     </style>
 </head>
 <body>
@@ -419,6 +438,11 @@
             </p>
             <div style="background: #FFF3D6; padding: 15px; border-radius: 15px; border: 2px dashed #FF9F1C; margin: 15px 0;">
                 <b style="font-size: 20px; color: #E27D60;">"안녕? 나는 세상에서 가장 재미있는 이야기를 들려줄 마법사야!"</b>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <input type="text" id="voiceOwnerName" placeholder="목소리 주인의 이름 (예: 엄마, 아빠)" 
+                       style="width: 100%; padding: 12px; border: 2px solid #06D6A0; border-radius: 10px; font-size: 18px; font-family: 'Jua', sans-serif; text-align: center;">
             </div>
             
             <button id="btnVoiceClone" class="btn-primary" style="background:#06D6A0; box-shadow: 0 8px 0 #05A87D; font-size: 24px; width: 100%; border-radius: 30px;">
@@ -482,6 +506,10 @@
     </div>
 
     <div id="screen-loading" class="screen">
+        <div style="position: absolute; top: 20px; right: 20px; display: flex; gap: 10px;">
+            <button onclick="showScreen('screen-home')" style="background: rgba(255,255,255,0.7); border: 2px solid #118AB2; padding: 5px 15px; border-radius: 20px; font-size: 16px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 홈으로</button>
+            <button onclick="loadLibrary()" style="background: rgba(255,255,255,0.7); border: 2px solid #118AB2; padding: 5px 15px; border-radius: 20px; font-size: 16px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">📚 보관함</button>
+        </div>
         <div class="loader-icon" id="loadingIcon">🚀</div>
         <div class="loading-text" id="loadingMsg">가마솥에서 마법을 섞는 중...<br>(조금만 기다려주세요!)</div>
         <button id="cancelBtn" class="btn-cancel" onclick="cancelTask()">❌ 마법 취소하기</button>
@@ -504,12 +532,20 @@
             <!-- 동화 스타일 선택 -->
             <div style="margin-top: 20px; width: 100%;">
                 <h3 style="color: #118AB2; font-size: 22px; margin-bottom: 5px;">🎨 어떤 동화를 만들까요?</h3>
-                <p style="font-size: 16px; color: #888; margin-bottom: 10px;">스타일을 골라 보세요!</p>
                 <div class="tone-selector">
                     <button class="tone-btn selected" data-tone="랜덤" onclick="selectTone(this)">🎲 랜덤</button>
                     <button class="tone-btn" data-tone="따뜻한" onclick="selectTone(this)">☀️ 따뜻한</button>
                     <button class="tone-btn" data-tone="모험적인" onclick="selectTone(this)">⚔️ 모험적인</button>
                     <button class="tone-btn" data-tone="교훈적인" onclick="selectTone(this)">📚 교훈적인</button>
+                </div>
+            </div>
+
+            <!-- 목소리 선택 추가 -->
+            <div style="margin-top: 20px; width: 100%;">
+                <h3 style="color: #FF9F1C; font-size: 22px; margin-bottom: 5px;">🔊 누구의 목소리로 들을까요?</h3>
+                <div id="voiceSelector" class="tone-selector" style="flex-wrap: wrap;">
+                    <!-- 목소리 목록이 동적으로 로드됩니다 -->
+                    <button class="tone-btn selected">⏳ 불러오는 중...</button>
                 </div>
             </div>
 
@@ -532,7 +568,10 @@
 
         <div class="nav-controls">
             <button id="btnPrevPage" class="btn-page" onclick="prevPage()">이전</button>
-            <div id="pageNumber" class="page-indicator">1 / 5</div>
+            <div style="display: flex; flex-direction: column; align-items: center;">
+                <div id="pageNumber" class="page-indicator">1 / 5</div>
+                <button class="btn-tts-replay" onclick="playPageAudio(currentPageIndex)">🔊 다시 듣기</button>
+            </div>
             <button id="btnNextPage" class="btn-page" onclick="nextPage()">다음</button>
         </div>
 
@@ -563,6 +602,7 @@
         let currentPageIndex = 0;    // 현재 펼쳐진 페이지 인덱스 (0~4)
         let pageAudioPlayer = null;
         let selectedStoryTone = "랜덤"; // 동화 스타일 선택값
+        let selectedVoiceId = "default_women"; // 선택된 목소리 ID
         let userGender = null;
 
         // --- 작업 상태 관리 전역 변수 ---
@@ -644,10 +684,38 @@
 
         function selectTone(btn) {
             // 기존 선택 해제
-            document.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('selected'));
+            btn.parentElement.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('selected'));
             // 새로운 선택 활성화
             btn.classList.add('selected');
             selectedStoryTone = btn.getAttribute('data-tone');
+        }
+
+        async function loadVoices() {
+            const container = document.getElementById('voiceSelector');
+            container.innerHTML = '<button class="tone-btn selected">⏳ 불러오는 중...</button>';
+            try {
+                const res = await fetch('/list-voices');
+                const data = await res.json();
+                if (data.status === "success") {
+                    container.innerHTML = "";
+                    data.voices.forEach(v => {
+                        const btn = document.createElement('button');
+                        btn.className = 'tone-btn' + (v.id === selectedVoiceId ? ' selected' : '');
+                        btn.innerText = v.name;
+                        btn.onclick = () => selectVoice(btn, v.id);
+                        container.appendChild(btn);
+                    });
+                }
+            } catch (err) {
+                console.error("목소리 목록 로드 실패", err);
+                container.innerHTML = '<button class="tone-btn selected">불러오기 실패</button>';
+            }
+        }
+
+        function selectVoice(btn, id) {
+            btn.parentElement.querySelectorAll('.tone-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            selectedVoiceId = id;
         }
 
         let selectedImageStyle = "active_style"; // 그림 스타일 선택값
@@ -657,6 +725,24 @@
             // 새로운 선택 활성화
             btn.classList.add('selected');
             selectedImageStyle = btn.getAttribute('data-style');
+        }
+
+        let ttsPlaying = false; 
+        let ttsAudioPlayer = null;
+
+        function stopAllAudio() {
+            if (pageAudioPlayer) {
+                pageAudioPlayer.pause();
+                pageAudioPlayer.currentTime = 0;
+            }
+            if (ttsAudioPlayer) {
+                ttsAudioPlayer.pause();
+                ttsAudioPlayer.currentTime = 0;
+                ttsAudioPlayer = null;
+            }
+            ttsPlaying = false;
+            const ttsBtn = document.getElementById("ttsButton");
+            if (ttsBtn) ttsBtn.innerText = "🔊 동화 당장 읽기!";
         }
 
         async function toggleTTS() {
@@ -690,7 +776,7 @@
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        voice_id: "default_women",
+                        voice_id: selectedVoiceId,
                         data: audioData
                     })
                 });
@@ -719,6 +805,7 @@
         let screenHistory = [];
 
         function goBack() {
+            stopAllAudio();
             if (screenHistory.length > 0) {
                 const prevScreen = screenHistory.pop();
                 document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
@@ -730,6 +817,10 @@
         }
 
         function showScreen(screenId) {
+            stopAllAudio();
+            if (screenId === 'screen-result') {
+                loadVoices();
+            }
             const currentActive = document.querySelector('.screen.active');
             if (currentActive && currentActive.id !== screenId) {
                 // loading 화면은 history에 넣지 않음
@@ -851,17 +942,26 @@
             if (btnVoiceClone) {
                 setupPushToTalk(btnVoiceClone, 
                     async () => {
+                        const ownerName = document.getElementById('voiceOwnerName').value.trim();
+                        if (!ownerName) {
+                            alert("누구의 목소리인지 이름을 입력해주세요! 😊");
+                            return;
+                        }
                         btnVoiceClone.innerText = "🔴 녹음 중...(계속 누르고 읽어주세요)";
                         cloneResultText.innerText = "";
                         await startRecording();
                     },
                     () => {
+                        const ownerName = document.getElementById('voiceOwnerName').value.trim();
+                        if (!ownerName) return;
+
                         btnVoiceClone.innerText = "🎤 마이크 누르고 말하기";
                         const fd = new FormData();
-                        fd.append("voice_id", "default_women");
+                        fd.append("voice_id", ownerName);
                         stopRecordingAndSend("/save-reference-audio", fd, (res) => {
                             if (res.status === "success") {
-                                cloneResultText.innerText = "✅ 성공적으로 저장되었어요! 이제 모험을 떠나요.";
+                                cloneResultText.innerText = `✅ ${ownerName} 목소리 저장 완료! 이제 모험을 떠나요.`;
+                                selectedVoiceId = res.voice_id; // 새로 녹음한 목소리로 선택 유지
                                 setTimeout(() => showScreen('screen-input'), 1500);
                             }
                         }, () => {
@@ -990,7 +1090,7 @@
                     story_tone: selectedStoryTone === "랜덤" ? null : selectedStoryTone,
                     char_image_path: charImageSrc,
                     character_name: document.getElementById('charName').value.trim() ||"주인공",
-                    voice_id: "default_women" // 실제 연동 시 저장된 voice_id 사용 가능
+                    voice_id: selectedVoiceId
                 };
 
                 const storyRes = await fetch('/generate-book', {
@@ -1001,6 +1101,12 @@
                 const storyData = await storyRes.json();
 
                 if (storyData.status === "success") {
+                    // 동화 생성 완료 상태 처리
+                    isTaskPending = false;
+                    pendingTaskType = "complete";
+                    lastGeneratedStory = storyData; 
+                    updateFloatingStatus("📕 동화 완성! (클릭)");
+
                     renderBook(storyData);
                 } else {
                     throw new Error(storyData.detail || "동화 생성 실패");
@@ -1014,14 +1120,16 @@
             }
         }
 
-        // 사운드 효과 초기화
-        const pageFlipSound = new Audio("https://assets.mixkit.co/active_storage/sfx/2591/2591-preview.mp3");
+        // 사운드 효과 초기화 (더 부드러운 책장 넘기는 소리로 교체)
+        const pageFlipSound = new Audio("https://assets.mixkit.co/active_storage/sfx/1102/1102-preview.mp3");
+        pageFlipSound.volume = 0.3; // 소리 크기를 30%로 조정 (쾅 소리 방지)
 
         function renderBook(data) {
             currentStoryTitle = data.title || "마법의 동화책";
             currentStoryParagraphs = data.story_paragraphs || [];
             currentStoryAudios = data.page_audios || [];
             currentStoryImages = data.page_images || Array(data.story_paragraphs.length).fill(charImageSrc);
+            currentTtsScript = data.tts_script || []; // TTS 스크립트 저장
             currentPageIndex = 0;
 
             document.getElementById('storyTitle').innerText = currentStoryTitle;
@@ -1050,8 +1158,10 @@
             updateBookUI();
             showScreen('screen-story');
             
-            // 첫 페이지 로드 후 잠시 뒤 음성 재생
-            setTimeout(() => playPageAudio(0), 1000);
+            // 첫 페이지 로드 후 잠시 뒤 음성 재생 (사용자 인터랙션 이후에만 가능하므로 지연 전송)
+            setTimeout(() => {
+                if (currentPageIndex === 0) playPageAudio(0);
+            }, 800);
         }
 
         function updateBookUI() {
@@ -1095,15 +1205,21 @@
         }
 
         function playPageAudio(index) {
+            if (index === undefined) index = currentPageIndex;
+            
             if (pageAudioPlayer) {
                 pageAudioPlayer.pause();
+                pageAudioPlayer.currentTime = 0;
                 pageAudioPlayer = null;
             }
 
             const audioUrl = currentStoryAudios[index];
             if (audioUrl) {
+                // 캐시 방지를 위해 타임스탬프 추가
                 pageAudioPlayer = new Audio(audioUrl + "?t=" + new Date().getTime());
-                pageAudioPlayer.play().catch(e => console.warn("오디오 재생 실패:", e));
+                pageAudioPlayer.play().catch(e => {
+                    console.warn("오디오 재생 실패 (브라우저 정책일 수 있음):", e);
+                });
             }
         }
 
@@ -1113,7 +1229,10 @@
                 title: currentStoryTitle,
                 character_name: cName,
                 image_path: charImageSrc,
-                story_paragraphs: currentStoryParagraphs
+                story_paragraphs: currentStoryParagraphs,
+                page_images: currentStoryImages,
+                page_audios: currentStoryAudios,
+                tts_script: currentTtsScript
             };
 
             try {
@@ -1163,7 +1282,11 @@
                             card.style.padding = "15px";
                             
                             const img = document.createElement('img');
-                            img.src = story.image_path || "";
+                            let rawPath = story.image_path || "";
+                            if (rawPath && !rawPath.startsWith("/") && !rawPath.startsWith("http") && !rawPath.startsWith("data:")) {
+                                rawPath = "/" + rawPath;
+                            }
+                            img.src = rawPath;
                             img.style.width = "80px";
                             img.style.height = "80px";
                             img.style.borderRadius = "15px";
@@ -1210,31 +1333,48 @@
             }
         }
 
-        function renderSavedStory(story) {
-            // 보관함에서 볼 때는 기존 생성 상태 초기화
-            isTaskPending = false;
-            pendingTaskType = "none";
-            updateFloatingStatus();
+        async function renderSavedStory(storySummary) {
+            try {
+                // 보관함에서 볼 때는 기존 생성 상태 초기화
+                isTaskPending = false;
+                pendingTaskType = "none";
+                updateFloatingStatus();
 
-            const mockData = {
-                title: story.title || "마법의 동화책",
-                story_paragraphs: story.story_paragraphs || [],
-                page_audios: story.page_audios || [],
-                page_images: story.page_images || Array(story.story_paragraphs.length).fill(story.image_path)
-            };
-            
-            renderBook(mockData);
+                const filename = storySummary.filename;
+                if (!filename) throw new Error("파일 정보가 없습니다.");
+
+                // 상세 데이터 요청 (한국어 파일명 대응을 위해 인코딩 처리)
+                const res = await fetch(`/get-story/${encodeURIComponent(filename)}`);
+                const result = await res.json();
+                
+                if (result.status !== "success") throw new Error("상세 정보를 가져오지 못했습니다.");
+                
+                const story = result.story;
+                const paragraphs = story.story_paragraphs || [];
+
+                // 경로 보정 함수: 상대 경로를 정적 파일 경로로 변환
+                const adjustPath = (p) => {
+                    if (!p) return charImageSrc;
+                    if (p.startsWith("http") || p.startsWith("data:")) return p;
+                    // 역슬래시를 슬래시로 변경하고 앞에 슬래시가 없다면 추가
+                    let fixed = p.replace(/\\/g, "/");
+                    return fixed.startsWith("/") ? fixed : "/" + fixed;
+                };
+
+                const mockData = {
+                    title: story.title || "마법의 동화책",
+                    story_paragraphs: paragraphs,
+                    page_audios: story.page_audios || [],
+                    page_images: (story.page_images || Array(paragraphs.length).fill(story.image_path || charImageSrc)).map(adjustPath),
+                    tts_script: story.tts_script || []
+                };
+                
+                renderBook(mockData);
+            } catch (e) {
+                console.error("보관함 동화 렌더링 에러:", e);
+                alert("동화책을 펼치는 중에 문제가 생겼어요. 😢");
+            }
         }
-
-        // --- renderBook 호출 이후 상태 완료 로직 추가 ---
-        const originalRenderBook = renderBook;
-        renderBook = function(data) {
-            isTaskPending = false;
-            pendingTaskType = "complete";
-            lastGeneratedStory = data; // 결과 저장
-            updateFloatingStatus("📕 동화 완성! (클릭)");
-            originalRenderBook(data);
-        };
     </script>
 </body>
 </html>

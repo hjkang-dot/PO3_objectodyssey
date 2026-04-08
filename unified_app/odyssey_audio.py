@@ -165,7 +165,7 @@ def generate_book_audios(paragraphs: List[str], voice_id: str = "default_women")
 
 # 부모 목소리 복제 TTS (온디맨드)
 @router.post("/generate_audio")
-async def generate_audio(request: AudioRequest):
+def generate_audio(request: AudioRequest):
     try:
         load_model_base()
         url = _generate_single_audio_internal(request.text, request.voice_id)
@@ -178,7 +178,7 @@ async def generate_audio(request: AudioRequest):
 
 # 감정 표현 TTS (상시 로드 모델 사용)
 @router.post("/generate_audio_v2")
-async def generate_audio_v2(request: VCRequest):
+def generate_audio_v2(request: VCRequest):
     ref_path = AUDIO_BASE_PATH / f"{request.voice_id}.wav"
 
     if not os.path.exists(ref_path):
@@ -255,15 +255,42 @@ async def generate_audio_v2(request: VCRequest):
         log_gpu_memory("generate_audio_v2 완료 후 정리")
 
 
+# 목소리 목록 조회
+@router.get("/list-voices")
+async def list_voices():
+    """저장된 모든 .wav 목소리 목록을 반환"""
+    try:
+        voices = []
+        # 기본 목소리 추가 (병합된 코드의 default_parents 우선)
+        if (AUDIO_BASE_PATH / "default_parents.wav").exists():
+            voices.append({"id": "default_parents", "name": "기본 목소리 (부모)"})
+        elif (AUDIO_BASE_PATH / "default_women.wav").exists():
+            voices.append({"id": "default_women", "name": "기본 목소리 (여성)"})
+        
+        # 사용자 녹음 목소리 스캔
+        files = sorted(AUDIO_BASE_PATH.glob("user_*.wav"), key=lambda x: os.path.getmtime(x), reverse=True)
+        for file in files:
+            voice_name = file.stem.replace("user_", "")
+            voices.append({"id": file.stem, "name": f"{voice_name}의 목소리"})
+            
+        return {"status": "success", "voices": voices}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 # 목소리 저장 기능
 @router.post("/save-reference-audio")
-async def save_reference_audio(voice_id: str = Form("default_women"), file: UploadFile = File(...)):
-    """프론트엔드에서 녹음한 사용자 목소리를 voice_id 이름으로 저장"""
+def save_reference_audio(voice_id: str = Form(...), file: UploadFile = File(...)):
+    """프론트엔드에서 녹음한 사용자 목소리를 user_이름.wav 형식으로 저장"""
     try:
-        content = await file.read()
-        save_path = AUDIO_BASE_PATH / f"{voice_id}.wav"
+        # 파일명 안전하게 처리 (user_ 접두사 강제)
+        clean_id = voice_id.replace("user_", "")
+        final_id = f"user_{clean_id}"
+        
+        content = file.file.read()
+        save_path = AUDIO_BASE_PATH / f"{final_id}.wav"
         with open(save_path, "wb") as f:
             f.write(content)
-        return {"status": "success", "message": f"Saved as {voice_id}.wav"}
+        return {"status": "success", "message": f"Saved as {final_id}.wav", "voice_id": final_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
