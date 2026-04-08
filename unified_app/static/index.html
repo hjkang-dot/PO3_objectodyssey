@@ -379,6 +379,47 @@
         }
         .btn-tts-replay:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #E27D60; }
         .btn-tts-replay:active { transform: translateY(3px); box-shadow: 0 2px 0 #E27D60; }
+        #floatingStatus {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #FF9F1C;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 9999;
+            display: none; /* 기본은 숨김, JS에서 제어 */
+            border: 3px solid #fff;
+            animation: floating 3s ease-in-out infinite;
+        }
+        .voice-item {
+            width: 100%;
+            background: #fff;
+            border-radius: 15px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            border: 2px solid #f0f0f0;
+            transition: transform 0.2s;
+        }
+        .voice-item:active { transform: scale(0.98); }
+        .voice-name { font-size: 18px; color: #333; font-weight: bold; }
+        .btn-delete-voice {
+            background: #FFD1D1;
+            border: none;
+            color: #FF4D4D;
+            padding: 5px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-family: 'Jua', sans-serif;
+        }
     </style>
 </head>
 <body>
@@ -409,7 +450,8 @@
         <p style="font-size: 24px; color: #118AB2; font-weight: bold; margin-top: -10px; margin-bottom: 40px; text-shadow: 1px 1px 0 #fff;">
             사진 한 장으로 뚝딱!<br>우리 아이 맞춤형 동화책
         </p>
-        <button class="btn-primary wobble" onclick="showScreen('screen-voice-clone')">🚀 모험 시작하기!</button>
+        <button class="btn-primary wobble" onclick="showScreen('screen-input')">🚀 모험 시작하기!</button>
+        <button class="btn-secondary" onclick="showScreen('screen-voice-clone')" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff; background: #FFD166; box-shadow: 0 8px 0 #EAB308;">🎙️ 내 목소리 관리</button>
         <button class="btn-secondary" onclick="loadLibrary()" style="margin-top: 15px; font-size: 22px; width: 100%; max-width: 320px; border-radius: 40px; padding: 15px; border: 4px solid #fff;">📚 내 보관함 가기</button>
     </div>
 
@@ -425,35 +467,36 @@
         </div>
     </div>
 
-    <!-- 목소리 복제 화면 추가 -->
+    <!-- 목소리 관리 화면 (기존 복제 화면 repurpose) -->
     <div id="screen-voice-clone" class="screen">
         <div style="width: 100%; max-width: 380px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <button onclick="goBack()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">⬅️ 뒤로</button>
             <button onclick="showScreen('screen-home')" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #118AB2; font-family: 'Jua', sans-serif;">🏠 처음으로</button>
         </div>
         <div class="cute-card">
-            <h2 style="color: #FF9F1C;">👩‍👦 엄마 아빠 목소리로<br>동화를 읽어줄까요?</h2>
-            <p style="font-size: 18px; color: #118AB2; margin-top: 10px;">
-                버튼을 <b>누르고 있는 동안</b> 아래 문장을 또박또박 읽어주세요!
+            <h2 style="color: #FF9F1C;">🎙️ 목소리 보관함</h2>
+            <p style="font-size: 16px; color: #118AB2; margin-top: 5px;">
+                새로운 목소리를 등록하거나<br>저장된 목소리를 관리할 수 있어요!
             </p>
+            
             <div style="background: #FFF3D6; padding: 15px; border-radius: 15px; border: 2px dashed #FF9F1C; margin: 15px 0;">
-                <b style="font-size: 20px; color: #E27D60;">"안녕? 나는 세상에서 가장 재미있는 이야기를 들려줄 마법사야!"</b>
+                <p style="margin: 0 0 10px 0; font-size: 14px; color: #EF476F; font-weight: bold;">[새 목소리 등록하기]</p>
+                <b style="font-size: 18px; color: #E27D60;">"안녕? 나는 세상에서 가장 재미있는 이야기를 들려줄 마법사야!"</b>
+                <div style="margin-top: 15px;">
+                    <input type="text" id="voiceOwnerName" placeholder="누구의 목소리인가요? (예: 아빠)" 
+                           style="width: 100%; padding: 10px; border: 2px solid #06D6A0; border-radius: 10px; font-size: 16px; font-family: 'Jua', sans-serif; text-align: center;">
+                </div>
+                <button id="btnVoiceClone" class="btn-primary" style="background:#06D6A0; box-shadow: 0 5px 0 #05A87D; font-size: 20px; width: 100%; border-radius: 20px; margin-top: 10px;">
+                    🎤 마이크 누르고 말하기
+                </button>
+                <div id="cloneResultText" style="margin-top: 10px; font-size: 14px; font-weight: bold; color: #118AB2; min-height: 20px;"></div>
             </div>
-            
-            <div style="margin-bottom: 15px;">
-                <input type="text" id="voiceOwnerName" placeholder="목소리 주인의 이름 (예: 엄마, 아빠)" 
-                       style="width: 100%; padding: 12px; border: 2px solid #06D6A0; border-radius: 10px; font-size: 18px; font-family: 'Jua', sans-serif; text-align: center;">
+
+            <h3 style="color: #118AB2; font-size: 20px; margin: 20px 0 10px 0;">✨ 저장된 목소리 목록</h3>
+            <div id="voiceListContainer" style="display: flex; flex-direction: column; gap: 10px; width: 100%; max-height: 250px; overflow-y: auto; padding: 5px;">
+                <!-- 목소리 목록이 동적으로 여기에 추가됩니다 -->
+                <div style="color: #999; font-size: 14px; margin-top: 20px;">불러오는 중...</div>
             </div>
-            
-            <button id="btnVoiceClone" class="btn-primary" style="background:#06D6A0; box-shadow: 0 8px 0 #05A87D; font-size: 24px; width: 100%; border-radius: 30px;">
-                🎤 마이크 누르고 말하기
-            </button>
-            <div id="cloneResultText" style="margin-top: 10px; font-weight: bold; color: #118AB2; min-height: 24px;"></div>
-            
-            <hr style="border: 1px dashed #ccc; margin: 20px 0;">
-            <button class="btn-secondary" onclick="showScreen('screen-input')" style="background:#ddd; box-shadow: 0 5px 0 #bbb; color:#555; padding: 10px 20px; font-size:18px;">
-                ⏭️ 건너뛰고 기본 목소리 사용하기
-            </button>
         </div>
     </div>
 
@@ -644,9 +687,18 @@
         }
 
         function resumePendingTask() {
-            if (pendingTaskType === "character") showScreen('screen-loading');
-            else if (pendingTaskType === "story") showScreen('screen-loading');
-            else if (pendingTaskType === "complete") {
+            const loadingMsg = document.getElementById('loadingMsg');
+            const loadingIcon = document.getElementById('loadingIcon');
+
+            if (pendingTaskType === "character") {
+                loadingIcon.innerHTML = "🚀";
+                loadingMsg.innerHTML = "장난감을 도화지에 옮기는 중... 🎨<br>멋진 캐릭터로 변신 중이에요! ✨";
+                showScreen('screen-loading');
+            } else if (pendingTaskType === "story") {
+                loadingIcon.innerHTML = "📖";
+                loadingMsg.innerHTML = "우리 아이만을 위한 5페이지 동화를 쓰고 있어요... ✍️<br>(음성 마법도 함께 부리는 중이라 조금 걸려요!)";
+                showScreen('screen-loading');
+            } else if (pendingTaskType === "complete") {
                 if(lastGeneratedStory) renderBook(lastGeneratedStory);
                 else showScreen('screen-home');
             }
@@ -811,6 +863,10 @@
                 document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
                 window.scrollTo(0, 0);
                 document.getElementById(prevScreen).classList.add('active');
+                if (prevScreen === 'screen-voice-clone') {
+                    loadVoiceList();
+                }
+                updateFloatingStatus();
             } else {
                 showScreen('screen-home');
             }
@@ -820,6 +876,9 @@
             stopAllAudio();
             if (screenId === 'screen-result') {
                 loadVoices();
+            }
+            if (screenId === 'screen-voice-clone') {
+                loadVoiceList();
             }
             const currentActive = document.querySelector('.screen.active');
             if (currentActive && currentActive.id !== screenId) {
@@ -841,6 +900,7 @@
             document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
             window.scrollTo(0, 0);
             document.getElementById(screenId).classList.add('active');
+            updateFloatingStatus();
         }
 
         // --- Audio Backend 연동 기능 (Push-to-Talk) ---
@@ -960,9 +1020,10 @@
                         fd.append("voice_id", ownerName);
                         stopRecordingAndSend("/save-reference-audio", fd, (res) => {
                             if (res.status === "success") {
-                                cloneResultText.innerText = `✅ ${ownerName} 목소리 저장 완료! 이제 모험을 떠나요.`;
-                                selectedVoiceId = res.voice_id; // 새로 녹음한 목소리로 선택 유지
-                                setTimeout(() => showScreen('screen-input'), 1500);
+                                cloneResultText.innerText = `✅ ${ownerName} 목소리 저장 완료!`;
+                                selectedVoiceId = res.voice_id; 
+                                loadVoiceList(); // 목록 즉시 갱신
+                                document.getElementById('voiceOwnerName').value = ""; // 입력란 초기화
                             }
                         }, () => {
                             cloneResultText.innerText = "⏳ 목소리 분석 중...";
@@ -1373,6 +1434,62 @@
             } catch (e) {
                 console.error("보관함 동화 렌더링 에러:", e);
                 alert("동화책을 펼치는 중에 문제가 생겼어요. 😢");
+            }
+        }
+
+        // --- 목소리 관리 기능 ---
+        async function loadVoiceList() {
+            const container = document.getElementById('voiceListContainer');
+            try {
+                const response = await fetch('/list-voices');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    container.innerHTML = '';
+                    if (data.voices.length === 0) {
+                        container.innerHTML = '<div style="color: #999; font-size: 14px; margin-top: 20px;">아직 저장된 목소리가 없어요.</div>';
+                        return;
+                    }
+                    
+                    data.voices.forEach(voice => {
+                        const item = document.createElement('div');
+                        item.className = 'voice-item';
+                        
+                        // 기본 목소리는 삭제 불가 처리
+                        const isDefault = voice.id.startsWith('default_');
+                        
+                        item.innerHTML = `
+                            <span class="voice-name">🎙️ ${voice.name}</span>
+                            ${!isDefault ? `<button class="btn-delete-voice" onclick="deleteVoice('${voice.id}')">🗑️ 삭제</button>` : ''}
+                        `;
+                        container.appendChild(item);
+                    });
+                }
+            } catch (e) {
+                console.error("목소리 목록 로드 실패", e);
+                container.innerHTML = '<div style="color: #FF4D4D; font-size: 14px;">목록을 불러오지 못했어요.</div>';
+            }
+        }
+
+        async function deleteVoice(voiceId) {
+            if (!confirm("정말 이 목소리를 삭제할까요?")) return;
+            
+            try {
+                const response = await fetch(`/delete-voice/${voiceId}`, { method: 'DELETE' });
+                const result = await response.json();
+                
+                if (result.status === 'success') {
+                    loadVoiceList(); // 삭제 후 목록 갱신
+                    // 결과 화면의 목소리 선택 창도 갱신 필요 시 loadVoices() 호출
+                    if (document.getElementById('screen-result').classList.contains('active')) {
+                        loadVoices();
+                    }
+                } else {
+                    alert("삭제 실패: " + result.detail);
+                }
+            } catch (e) {
+                console.error("목소리 삭제 통신 에러", e);
+                alert("삭제 중 오류가 발생했습니다.");
             }
         }
     </script>

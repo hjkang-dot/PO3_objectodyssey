@@ -294,3 +294,27 @@ def save_reference_audio(voice_id: str = Form(...), file: UploadFile = File(...)
         return {"status": "success", "message": f"Saved as {final_id}.wav", "voice_id": final_id}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# 목소리 삭제 기능 추가
+@router.delete("/delete-voice/{voice_id}")
+async def delete_voice(voice_id: str):
+    """특정 목소리 파일을 삭제합니다."""
+    try:
+        # 보안을 위해 경로 조작 방지
+        if ".." in voice_id or "/" in voice_id or "\\" in voice_id:
+            raise HTTPException(status_code=400, detail="Invalid voice ID")
+            
+        file_path = AUDIO_BASE_PATH / f"{voice_id}.wav"
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="Voice file not found")
+            
+        # 기본 목소리 삭제 방지
+        if voice_id in ["default_parents", "default_women"]:
+            raise HTTPException(status_code=403, detail="Cannot delete default voices")
+
+        os.remove(file_path)
+        return {"status": "success", "message": f"{voice_id} 삭제 완료"}
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=str(e))
