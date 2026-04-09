@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -26,6 +26,16 @@ class ParentInput(BaseModel):
     personality: str = ""
     goal: str = ""
     extra_description: str = ""
+    original_object_hint: str = ""
+    traits_input: str = ""
+
+
+class PromptOptions(BaseModel):
+    """Prompt-selection values used by the image prompt builder."""
+
+    gender: Literal["boy", "girl"] = "girl"
+    base_style: Literal["active", "soft"] = "active"
+    category: str = "default"
 
 
 class CharacterSheet(BaseModel):
@@ -50,8 +60,8 @@ class StylePrompts(BaseModel):
 class GeneratedImages(BaseModel):
     """Paths or base64 payloads for generated images."""
 
-    active_style: str | None = None
-    soft_style: str | None = None
+    active_style: str
+    soft_style: str
 
 
 class TtsScriptLine(BaseModel):
@@ -92,13 +102,49 @@ class StoryChoice(BaseModel):
         return cleaned
 
 
+class StoryPage(BaseModel):
+    """A single illustrated page in the storybook."""
+
+    page_number: int
+    sentences: list[str]
+    page_text: str = ""
+    image_prompt: str
+    image_path: str | None = None
+
+    @field_validator("page_number")
+    @classmethod
+    def _validate_page_number(cls, value: int) -> int:
+        if value < 1:
+            raise ValueError("page_number must start at 1.")
+        return value
+
+    @field_validator("sentences")
+    @classmethod
+    def _validate_sentences(cls, value: list[str]) -> list[str]:
+        cleaned = [str(item).strip() for item in value if str(item).strip()]
+        if len(cleaned) != 3:
+            raise ValueError("Each story page must contain exactly 3 sentences.")
+        return cleaned
+
+    @field_validator("image_prompt")
+    @classmethod
+    def _validate_image_prompt(cls, value: str) -> str:
+        cleaned = str(value).strip()
+        if not cleaned:
+            raise ValueError("Each story page must include an image_prompt.")
+        return cleaned
+
+
 class StoryPackageResponse(BaseModel):
     """Full story generation payload for reading and TTS."""
 
     title: str
-    story_paragraphs: list[str]
+    story_paragraphs: list[str] = Field(default_factory=list)
+    story_pages: list[StoryPage] = Field(default_factory=list)
+    cover_image_path: str | None = None
+    cover_prompt: str | None = None
     tts_script: list[TtsScriptLine]
-    choices: list[StoryChoice] = Field(default_factory=list)
+    choices: list[StoryChoice]
 
     @field_validator("title")
     @classmethod
@@ -114,28 +160,33 @@ class StoryPackageResponse(BaseModel):
         cleaned = [str(item).strip() for item in value if str(item).strip()]
         if not cleaned:
             raise ValueError("Story must contain at least one paragraph.")
-        # 5페이지 동화책 형식: 최대 5개 문단
-        if len(cleaned) > 5:
-            raise ValueError("Story must contain at most 5 paragraphs (one per page).")
-        for paragraph in cleaned:
-            # 페이지당 2~3줄 분량: 최대 300자
-            if len(paragraph) > 300:
-                raise ValueError(f"Each story paragraph must be 300 characters or fewer (Got {len(paragraph)}).")
         return cleaned
+
+    @field_validator("story_pages")
+    @classmethod
+    def _validate_story_pages(cls, value: list[StoryPage]) -> list[StoryPage]:
+        if len(value) != 5:
+            raise ValueError("Story must contain exactly 5 pages.")
+        expected_page_numbers = list(range(1, 6))
+        actual_page_numbers = [page.page_number for page in value]
+        if actual_page_numbers != expected_page_numbers:
+            raise ValueError("Story pages must be ordered from page 1 to page 5.")
+        return value
 
     @field_validator("tts_script")
     @classmethod
     def _validate_tts_script(cls, value: list[TtsScriptLine]) -> list[TtsScriptLine]:
         if not value:
             raise ValueError("TTS script must contain at least one line.")
+        if len(value) < 15:
+            raise ValueError("TTS script must cover all 15 story sentences.")
         return value
 
     @field_validator("choices")
     @classmethod
     def _validate_choices(cls, value: list[StoryChoice]) -> list[StoryChoice]:
-        # 5페이지 동화책 형식에서는 선택지가 선택 사항 (0~2개)
-        if len(value) > 2:
-            raise ValueError("Choices must contain at most 2 items.")
+        if len(value) != 2:
+            raise ValueError("Choices must contain exactly 2 items.")
         return value
 
 
@@ -145,6 +196,8 @@ class StoryRequest(BaseModel):
     character_sheet: CharacterSheet
     extra_prompt: str = ""
     story_tone: str | None = None
+    style_prompts: StylePrompts | None = None
+    reference_image: str | None = None
 
     @field_validator("character_sheet")
     @classmethod
@@ -174,6 +227,7 @@ class StylePromptsRequest(BaseModel):
     """Request body for style prompt generation."""
 
     character_sheet: CharacterSheet
+    prompt_options: PromptOptions | None = None
 
 
 class GenerateImagesRequest(BaseModel):
@@ -181,7 +235,6 @@ class GenerateImagesRequest(BaseModel):
 
     style_prompts: StylePrompts
     reference_image: str
-    image_style: str = "active_style"
 
 
 class GenerateStoryRequest(BaseModel):
@@ -196,6 +249,7 @@ class PipelineRequest(BaseModel):
     vision_result: VisionResult
     parent_input: ParentInput
     reference_image: str
+    prompt_options: PromptOptions | None = None
 
 
 class PipelineResponse(BaseModel):
@@ -204,7 +258,8 @@ class PipelineResponse(BaseModel):
     character_sheet: CharacterSheet
     style_prompts: StylePrompts
     generated_images: GeneratedImages
-    story: StoryPackageResponse
+    story: StoryPackageResponse | None = None
+    story_error: str | None = None
 
 
 class ReferenceImagesResponse(BaseModel):

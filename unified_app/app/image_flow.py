@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.services.gemini_service import GeminiService
-from app.utils import resolve_reference_image_path
+from unified_app.app.services.gemini_service import GeminiService
+from unified_app.app.utils import resolve_reference_image_path
 
 
 def build_reference_prompt_seed(reference_path: Path, style_label: str, gemini_service: GeminiService) -> dict[str, Any]:

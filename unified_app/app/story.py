@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.story_pipeline import build_story_prompt, generate_story_package
+from unified_app.app.story_pipeline import build_story_prompt, generate_story_package
 
 
 def build_story(character_sheet: dict[str, Any], openai_service: Any | None = None) -> dict[str, Any]:

@@ -57,7 +57,20 @@ class GeminiService:
     def _client(self) -> Any:
         if not self.is_configured:
             raise RuntimeError("Gemini API is not configured.")
-        return genai.Client(api_key=self.api_key)
+        
+        # 503, 504 등 transient 에러 대응을 위한 재시도 정책 강화
+        retry_options = genai_types.HttpRetryOptions(
+            initial_delay=5.0,       # 첫 재시도 전 대기 시간 (초) - 서버 복구 시간 확보
+            attempts=8,              # 최대 시도 횟수 상향
+            exp_base=2,              # 지수 백오프 기반
+            http_status_codes=[429, 500, 502, 503, 504], # 대상 에러 코드
+        )
+        http_options = genai_types.HttpOptions(
+            retry_options=retry_options,
+            timeout=120 * 1000,      # 요청 타임아웃 120초 (ms 단위)
+        )
+        
+        return genai.Client(api_key=self.api_key, http_options=http_options)
 
     def generate_text(self, prompt: str) -> str:
         """Generate text using Gemini."""

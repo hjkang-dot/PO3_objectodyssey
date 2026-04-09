@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException
 
-from app.models import (
+from unified_app.app.models import (
     CharacterSheetRequest,
     GenerateImagesRequest,
     GenerateStoryRequest,
@@ -15,14 +15,14 @@ from app.models import (
     StoryPackageResponse,
     StylePromptsRequest,
 )
-from app.pipeline import (
+from unified_app.app.pipeline import (
     build_character_sheet,
     build_style_prompts,
     generate_images,
     generate_story,
     run_pipeline,
 )
-from app.utils import list_reference_images
+from unified_app.app.utils import list_reference_images
 
 router = APIRouter()
 

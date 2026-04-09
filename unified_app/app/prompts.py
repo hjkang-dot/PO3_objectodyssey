@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.models import ALLOWED_STORY_TONES
+from unified_app.app.models import ALLOWED_STORY_TONES
 
 
 def character_sheet_prompt(vision_result: dict[str, Any], parent_input: dict[str, Any]) -> str:
@@ -18,6 +18,8 @@ Rules:
 - The JSON must contain exactly these keys:
   original_object, name, job, personality, goal, core_visual_traits, tone
 - Keep the character age-appropriate, friendly, and appealing for children ages 6-8.
+- **IMPORTANT: All JSON values must be written in Korean string.** (Only keys must remain in English).
+- Translate the detected `original_object` from English to a child-friendly Korean word (e.g., "teddy bear" -> "곰인형").
 - Preserve the first detected object as the core identity of the character.
 - Make the character visually consistent with the reference object.
 - Favor bold, readable, toy-like visual traits over vague pastel decoration.
@@ -69,8 +71,8 @@ def build_common_story_rules() -> str:
 - 주인공은 character_sheet의 기존 캐릭터 한 명만 사용한다.
 - 캐릭터의 name, original_object, job, personality, goal 정보를 이야기 안에 자연스럽게 반영한다.
 - 대상 독자는 5세에서 7세 아동이다.
-- story_paragraphs는 정확히 5개 문단(페이지)이어야 한다.
-- 각 문단은 2~3줄(약 60~100자)의 쉬운 한국어로 작성하여 가독성을 높인다.
+- story_paragraphs는 5개 문단(페이지)이어야 한다.
+- 각 문단은 2~3문장(총 50자 이내)의 쉬운 한국어로 작성하여 가독성을 높인다.
 - 이야기 전체에는 핵심 사건을 최대 2개까지만 넣는다.
 - 어렵거나 추상적인 표현, 긴 문장은 피한다.
 - title은 짧고 분명하게 쓴다.

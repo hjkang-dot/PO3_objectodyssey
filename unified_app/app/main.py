@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import router
-from app.utils import PROJECT_ROOT
+from unified_app.app.api import router
+from unified_app.app.utils import PROJECT_ROOT
 
 APP_ROOT = PROJECT_ROOT / "JHPark"
 

@@ -35,22 +35,39 @@ class VCRequest(BaseModel):
     voice_id: str = 'default_women'
     data: List[VCContent]
 
-# 2. 모델 로드 및 설정 (초점: 상시 CPU 대기) ------------------------------
-print("--- Loading Qwen-TTS CustomVoice Model (Offload Mode) ---")
-
-# ✅ 메인 모델 (1.7B VoiceDesign) — 초기 CPU 로딩
-model = Qwen3TTSModel.from_pretrained(
-    "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
-    device_map="cpu",
-    dtype=torch.bfloat16,
-    attn_implementation="eager",
-    local_files_only=True
-)
-
-# ✅ model_base — 온디맨드 로드용 추적
+# 모델 변수 초기화 (지연 로딩 용)
+model = None
 model_base = None
 
-print(f"--- Audio Model Loaded on CPU (Initial) ---")
+def get_model():
+    """메인 모델(1.7B) 지연 로드"""
+    global model
+    if model is None:
+        print("--- Loading Qwen-TTS CustomVoice Model (1.7B) to CPU ---")
+        model = Qwen3TTSModel.from_pretrained(
+            "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice",
+            device_map="cpu",
+            dtype=torch.bfloat16,
+            attn_implementation="eager",
+            local_files_only=True
+        )
+    return model
+
+def get_model_base():
+    """베이스 모델(0.6B) 지연 로드"""
+    global model_base
+    if model_base is None:
+        print("--- Loading Qwen-TTS Base Model (0.6B) to GPU ---")
+        model_base = Qwen3TTSModel.from_pretrained(
+            "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
+            device_map=device,
+            dtype=torch.bfloat16,
+            attn_implementation="eager",
+            local_files_only=True
+        )
+    return model_base
+
+print(f"--- Audio Service Initialized (Lazy Loading Mode) ---")
 
 # 3. 함수 설정 -------------------------------------
 ROOT_DIR = Path(__file__).resolve().parent
@@ -93,27 +110,22 @@ def load_model_base():
     """model_base(0.6B) 온디맨드 로드. GPU 공간 확보 선행."""
     global model_base, model
 
-    # ✅ 1.7B 모델이 있다면 확실하게 CPU로 내림 (에러 방지를 위해 속성 체크 간소화)
-    if model is not None:
+    curr_model = get_model()
+    if curr_model is not None:
         try:
-            print("--- Offloading model (1.7B) to CPU to make room for base model ---")
-            model.to('cpu')
+            print("--- Offloading main model to CPU to make room for base model ---")
+            if hasattr(curr_model, 'model'):
+                curr_model.model.to('cpu')
+            else:
+                curr_model.to('cpu')
         except Exception as e:
             print(f"[Warning] Failed to offload model: {e}")
     
     gc.collect()
     torch.cuda.empty_cache()
 
-    if model_base is None:
-        print("--- Loading model_base (0.6B Base) to GPU ---")
-        model_base = Qwen3TTSModel.from_pretrained(
-            "Qwen/Qwen3-TTS-12Hz-0.6B-Base",
-            device_map=device,
-            dtype=torch.bfloat16,
-            attn_implementation="eager",
-            local_files_only=True
-        )
-        log_gpu_memory("model_base Load")
+    get_model_base()
+    log_gpu_memory("model_base Load")
 
 
 def unload_model_base():
@@ -139,8 +151,9 @@ def _generate_single_audio_internal(text: str, voice_id: str):
         if not os.path.exists(ref_path):
             raise FileNotFoundError(f"Voice sample {voice_id} not found.")
 
+    curr_model_base = get_model_base()
     with torch.no_grad():
-        wavs, sr = model_base.generate_voice_clone(
+        wavs, sr = curr_model_base.generate_voice_clone(
             text=text,
             language="Korean",
             ref_audio=str(ref_path),
@@ -195,9 +208,13 @@ def generate_audio_v2(request: VCRequest):
         # ✅ 추론 전에 다른 모델(model_base)이 있다면 내리고 GPU 공간 확보
         unload_model_base()
 
-        print("--- Moving model (1.7B) to GPU ---")
+        print("--- Moving main model to GPU ---")
+        curr_model = get_model()
         try:
-            model.to(device)
+            if hasattr(curr_model, 'model'):
+                curr_model.model.to(device)
+            else:
+                curr_model.to(device)
         except Exception as e:
             print(f"[Warning] Failed to move model to GPU: {e}")
 
@@ -210,11 +227,11 @@ def generate_audio_v2(request: VCRequest):
 
         for i, line in enumerate(fairy_tale_script):
             with torch.no_grad():
-                wavs, sr = model.generate_custom_voice(
-                    text=line.text,
+                wavs, sr = curr_model.generate_custom_voice(
+                    text="어 " + line.text,
                     language="korean",
                     speaker=['Sohee'],
-                    instruct=line.instruct
+                    instruct="Speak slowly " + line.instruct
                 )
             final_sr = sr
             audio_cpu = wavs[0]
@@ -241,8 +258,12 @@ def generate_audio_v2(request: VCRequest):
 
     finally:
         # ✅ 작업 끝난 후 메인 모델 즉시 CPU로 반환
-        print("--- Offloading model (1.7B) to CPU ---")
-        model.to('cpu')
+        print("--- Offloading main model to CPU ---")
+        curr_model = get_model()
+        if hasattr(curr_model, 'model'):
+            curr_model.model.to('cpu')
+        else:
+            curr_model.to('cpu')
         
         if 'all_audio_segments' in locals(): del all_audio_segments
         if 'combined' in locals(): del combined
@@ -280,6 +301,40 @@ def save_reference_audio(voice_id: str = Form(...), file: UploadFile = File(...)
             f.write(content)
         return {"status": "success", "message": f"Saved as {final_id}.wav", "voice_id": final_id}
     except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/stt")
+async def speech_to_text(file: UploadFile = File(...)):
+    """OpenAI Whisper를 사용하여 음성을 텍스트로 변환합니다."""
+    try:
+        # 파일 확장자 추출 (기본값 webm)
+        ext = file.filename.split('.')[-1] if '.' in file.filename else 'webm'
+        temp_filename = f"stt_{uuid.uuid4()}.{ext}"
+        temp_path = AUDIO_BASE_PATH / temp_filename
+        
+        # 파일 임시 저장
+        content = await file.read()
+        with open(temp_path, "wb") as f:
+            f.write(content)
+            
+        # Whisper API 호출
+        with open(temp_path, "rb") as audio_file:
+            transcript = client.audio.transcriptions.create(
+                model="whisper-1", 
+                file=audio_file
+            )
+        
+        # 임시 파일 삭제
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        
+        return {"status": "success", "text": transcript.text}
+    except Exception as e:
+        print(f"[ERROR] STT 에러 발생: {e}")
+        # 임시 파일이 남아있다면 삭제 시도
+        if 'temp_path' in locals() and os.path.exists(temp_path):
+            os.remove(temp_path)
         raise HTTPException(status_code=500, detail=str(e))
 
 
